@@ -66,7 +66,7 @@ public class Belongings implements Iterable<Item> {
 				//secondary weapons still occupy an inv. slot
 				cap--;
 			}
-			return cap;
+			return cap + 500; // LAB2 sandbox capacity
 		}
 	}
 
@@ -209,6 +209,14 @@ public class Belongings implements Iterable<Item> {
 
 		secondWep = (KindOfWeapon) bundle.get(SECOND_WEP);
 		if (secondWep() != null)    secondWep().activate(owner);
+
+		// LAB2_RESTORE_EXTRA: extra-equipped rings/artifacts live in backpack
+		for (Item item : backpack.items) {
+			if (item instanceof KindofMisc && ((KindofMisc)item).labExtraEquipped()) {
+				((KindofMisc)item).activate(owner);
+			}
+		}
+		owner.updateHT(false);
 
 		bundleRestoring = false;
 	}

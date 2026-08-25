@@ -33,9 +33,45 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 import com.watabou.utils.Random;
+import com.watabou.utils.Bundle;
 
 
 public abstract class KindofMisc extends EquipableItem {
+
+	// LAB2: extra ring/artifact equipment. The item stays in the backpack,
+	// but its normal activate()/buff logic is attached to the hero.
+	private boolean labExtraEquipped = false;
+	private static final String LAB_EXTRA_EQUIPPED = "lab_extra_equipped";
+
+	public boolean labExtraEquipped(){
+		return labExtraEquipped;
+	}
+
+	public boolean labEquipExtra(Hero hero){
+		if (labExtraEquipped || !(this instanceof Ring || this instanceof Artifact)) return false;
+		labExtraEquipped = true;
+		identify();
+		Talent.onItemEquipped(hero, this);
+		activate(hero);
+		cursedKnown = true;
+		if (cursed) equipCursed(hero);
+		hero.updateHT(false);
+		Item.updateQuickslot();
+		return true;
+	}
+
+	@Override
+	public void storeInBundle(Bundle bundle){
+		super.storeInBundle(bundle);
+		bundle.put(LAB_EXTRA_EQUIPPED, labExtraEquipped);
+	}
+
+	@Override
+	public void restoreFromBundle(Bundle bundle){
+		super.restoreFromBundle(bundle);
+		labExtraEquipped = bundle.getBoolean(LAB_EXTRA_EQUIPPED);
+	}
+
 
 	@Override
 	public boolean doEquip(final Hero hero) {
@@ -171,6 +207,14 @@ public abstract class KindofMisc extends EquipableItem {
 
 	@Override
 	public boolean doUnequip(Hero hero, boolean collect, boolean single) {
+		// LAB2_EXTRA_UNEQUIP
+		if (labExtraEquipped) {
+			labExtraEquipped = false;
+			if (single) hero.spendAndNext(timeToEquip(hero));
+			else hero.spend(timeToEquip(hero));
+			Item.updateQuickslot();
+			return true;
+		}
 		if (super.doUnequip(hero, collect, single)){
 
 			if (hero.belongings.artifact == this) {
@@ -192,7 +236,7 @@ public abstract class KindofMisc extends EquipableItem {
 
 	@Override
 	public boolean isEquipped( Hero hero ) {
-		return hero != null && (hero.belongings.artifact() == this
+		return hero != null && (labExtraEquipped || hero.belongings.artifact() == this
 				|| hero.belongings.misc() == this
 				|| hero.belongings.ring() == this);
 	}
