@@ -84,10 +84,13 @@ public class YandereSprite extends MobSprite {
     private void switchVisualState(int next) {
         if (next == visualState) return;
 
-        boolean wasRun = curAnim == run;
-        boolean wasAttack = curAnim == attack || curAnim == zap;
-        boolean wasOperate = curAnim == operate;
-        boolean wasDie = curAnim == die;
+        // On first setup curAnim and every inherited animation field are null.
+        // Comparing null == null made wasDie true, so a newly summoned ally
+        // immediately played her death animation and then disappeared.
+        boolean wasRun = curAnim != null && curAnim == run;
+        boolean wasAttack = curAnim != null && (curAnim == attack || curAnim == zap);
+        boolean wasOperate = curAnim != null && curAnim == operate;
+        boolean wasDie = curAnim != null && curAnim == die;
 
         visualState = next;
         idle = idleByState[next];
