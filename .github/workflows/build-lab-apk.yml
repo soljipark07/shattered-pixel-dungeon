@@ -3,6 +3,7 @@ name: Build Lab APK
 on:
   push:
     branches:
+      - master
       - feature/yandere-lab-v04
   workflow_dispatch:
 
