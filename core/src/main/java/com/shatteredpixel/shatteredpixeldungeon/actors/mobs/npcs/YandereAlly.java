@@ -145,6 +145,19 @@ public class YandereAlly extends DirectableAlly {
         return super.attackDelay() * 0.65f;
     }
 
+    @Override
+    public void onMotionComplete() {
+        super.onMotionComplete();
+
+        // CharSprite's looping run animation is not automatically replaced
+        // when a mob finishes its movement tween. This ally often stops beside
+        // the stationary hero, so without an explicit reset she keeps walking
+        // in place forever after the last step.
+        if (sprite != null && isAlive()) {
+            sprite.idle();
+        }
+    }
+
     public int statAttackMin() { return hostileToHero ? Math.max(9999, Dungeon.hero == null ? 9999 : Dungeon.hero.HT * 4) : 180; }
     public int statAttackMax() { return hostileToHero ? statAttackMin() : 320; }
     public int statDrMin() { return 350; }
