@@ -77,6 +77,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.HolyWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.Smite;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereAlly;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Monk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Snake;
 import com.shatteredpixel.shatteredpixeldungeon.effects.CellEmitter;
@@ -91,6 +92,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.EquipableItem;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap.Type;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;
 import com.shatteredpixel.shatteredpixeldungeon.items.KindOfWeapon;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.Armor;
 import com.shatteredpixel.shatteredpixeldungeon.items.armor.ClassArmor;
@@ -832,6 +834,7 @@ public class Hero extends Char {
 		
 		//calls to dungeon.observe will also update hero's local FOV.
 		fieldOfView = Dungeon.level.heroFOV;
+		RedRibbon.ensureYanderePresent();
 
 		if (buff(Endure.EndureTracker.class) != null){
 			buff(Endure.EndureTracker.class).endEnduring();
@@ -1642,6 +1645,7 @@ public class Hero extends Char {
 		int effectiveDamage = preHP - postHP;
 
 		if (effectiveDamage <= 0) return;
+		YandereAlly.onHeroDamaged(effectiveDamage, preHP, postHP, src);
 
 		if (buff(Challenge.DuelParticipant.class) != null){
 			buff(Challenge.DuelParticipant.class).addDamage(effectiveDamage);

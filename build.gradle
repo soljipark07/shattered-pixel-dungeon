@@ -14,8 +14,8 @@ allprojects {
         appName = '녹픽던 실험실'
         appPackageName = 'com.solji.spdlab'
 
-        appVersionCode = 897 // LAB2_VERSION_BUMP
-        appVersionName = '3.3.8-lab2'
+        appVersionCode = 902
+        appVersionName = '3.3.8-lab3-y024'
 
         appJavaCompatibility = JavaVersion.VERSION_11
 

@@ -69,6 +69,8 @@ import com.shatteredpixel.shatteredpixeldungeon.effects.particles.WindParticle;
 import com.shatteredpixel.shatteredpixeldungeon.items.Generator;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;
+import com.shatteredpixel.shatteredpixeldungeon.items.YandereHeart;
 import com.shatteredpixel.shatteredpixeldungeon.items.Stylus;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TalismanOfForesight;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.TimekeepersHourglass;
@@ -218,6 +220,9 @@ public abstract class Level implements Bundlable {
 
 		//TODO maybe just make this part of RegularLevel?
 		if (!Dungeon.bossLevel() && Dungeon.branch == 0) {
+			// LAB3-y02 HEART SPAWN
+			addItemToSpawn(new YandereHeart());
+			addItemToSpawn(new YandereHeart());
 
 			addItemToSpawn(Generator.random(Generator.Category.FOOD));
 
@@ -582,6 +587,7 @@ public abstract class Level implements Bundlable {
 
 	//some buff effects have special logic or are cancelled from the hero before transitioning levels
 	public static void beforeTransition(){
+		RedRibbon.beforeTransition();
 
 		//time freeze effects need to resolve their pressed cells before transitioning
 		TimekeepersHourglass.timeFreeze timeFreeze = Dungeon.hero.buff(TimekeepersHourglass.timeFreeze.class);
