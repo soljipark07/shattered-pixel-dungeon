@@ -54,6 +54,21 @@ public class YandereAlly extends DirectableAlly {
     private float affectionClock = -1f;
     private float lastTalkClock = -999999f;
 
+    // RedRibbon은 층 이동 때 얀데레 본체를 새로 만든다.
+    // 그래서 리본이 savedRage만 넘겨도 마지막 하트 타이머가 리셋되지 않도록
+    // 직전 본체의 정확한 시간 기반 상태를 짧게 보관한다.
+    private static final float FLOOR_TRANSFER_WINDOW = 200f;
+    private static float transferSnapshotClock = -1f;
+    private static float transferAffectionAge = 0f;
+    private static float transferLimitAge = -1f;
+    private static int transferCurrentRage = -1;
+    private static int transferRageBase = 0;
+    private static int transferMode = -1;
+    private static int transferTotalHearts = -1;
+    private static int transferEffectiveHearts = -1;
+    private static int transferWarnedStage = 0;
+    private static boolean transferHostile = false;
+
     private int warnedStage = 0;
     private float limitReachedClock = -1f;
 
@@ -271,12 +286,16 @@ public class YandereAlly extends DirectableAlly {
             alignment = Alignment.ALLY;
             attacksAutomatically = true;
 
-            // LAB3-y023: 광폭은 층 전체 적을 적극적으로 찾지만 텔레포트는 하지 않는다.
-            // 이제 직접 뛰어가서 사냥한다.
+            // 광폭은 층 전체의 '도달 가능한' 적을 적극적으로 추적한다.
+            // 적이 없거나 현재 지형상 도달할 수 없으면 멈춰 있지 않고 순찰한다.
             if (mode == MODE_RAMPAGE && revengeTarget() == null) {
                 Char hunt = nearestEnemyAnywhere();
                 if (hunt != null) {
+                    clearDefensingPos();
                     targetChar(hunt);
+                } else {
+                    clearEnemy();
+                    ensureRampagePatrol();
                 }
             }
         }
@@ -337,19 +356,63 @@ public class YandereAlly extends DirectableAlly {
     private Char nearestEnemyAnywhere() {
         if (Dungeon.level == null) return null;
 
+        // 단순 직선거리가 아니라 실제 걸어서 갈 수 있는 적만 고른다.
+        // 이 검사가 없으면 막힌 적을 계속 재지정하면서 매 턴 '?'만 띄울 수 있다.
+        PathFinder.buildDistanceMap(pos, Dungeon.level.passable);
+
         Mob best = null;
         int bestDist = Integer.MAX_VALUE;
 
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (!validEnemy(mob)) continue;
 
-            int d = Dungeon.level.distance(pos, mob.pos);
+            int d = PathFinder.distance[mob.pos];
+            if (d == Integer.MAX_VALUE) continue;
+
             if (best == null || d < bestDist) {
                 best = mob;
                 bestDist = d;
             }
         }
         return best;
+    }
+
+    private void ensureRampagePatrol() {
+        if (Dungeon.level == null) return;
+
+        // 이미 순찰 목적지로 걸어가는 중이면 계속 간다.
+        if (movingToDefendPos && defendingPos != -1 && pos != defendingPos) {
+            state = WANDERING;
+            return;
+        }
+
+        // 현재 위치에서 실제로 도달 가능한 칸 중 멀리 떨어진 후보를 뽑는다.
+        // 도착할 때마다 새 목적지를 골라 광폭 상태에서는 계속 맵을 돌아다닌다.
+        PathFinder.buildDistanceMap(pos, Dungeon.level.passable);
+
+        int best = -1;
+        int bestDist = 0;
+
+        for (int i = 0; i < 48; i++) {
+            int cell = Random.Int(Dungeon.level.length());
+            if (cell == pos || Actor.findChar(cell) != null) continue;
+
+            int d = PathFinder.distance[cell];
+            if (d == Integer.MAX_VALUE || d <= 0) continue;
+
+            if (d > bestDist) {
+                best = cell;
+                bestDist = d;
+            }
+        }
+
+        if (best != -1) {
+            defendPos(best);
+        } else {
+            // 극단적으로 이동 가능한 칸이 없는 방에서도 HUNTING에 남아 '?'를 반복하지 않는다.
+            clearDefensingPos();
+            state = WANDERING;
+        }
     }
 
     private boolean validEnemy(Mob mob) {
@@ -609,19 +672,64 @@ public class YandereAlly extends DirectableAlly {
         }
     }
 
+    private void snapshotFloorTransfer(float now, float affectionAge, int currentRage) {
+        transferSnapshotClock = now;
+        transferAffectionAge = Math.max(0f, affectionAge);
+        transferLimitAge = limitReachedClock < 0f ? -1f : Math.max(0f, now - limitReachedClock);
+        transferCurrentRage = currentRage;
+        transferRageBase = rageBase;
+        transferMode = mode;
+        transferTotalHearts = totalHearts;
+        transferEffectiveHearts = effectiveHearts;
+        transferWarnedStage = warnedStage;
+        transferHostile = hostileToHero;
+    }
+
+    private static boolean matchesFloorTransfer(int savedMode, int savedRage, int savedEffectiveHearts,
+                                                int savedTotalHearts, boolean savedHostile, float now) {
+        return transferSnapshotClock >= 0f
+                && now >= transferSnapshotClock
+                && now - transferSnapshotClock <= FLOOR_TRANSFER_WINDOW
+                && transferMode == savedMode
+                && transferCurrentRage == Math.max(0, Math.min(100, savedRage))
+                && transferEffectiveHearts == Math.max(0, savedEffectiveHearts)
+                && transferTotalHearts == Math.max(transferEffectiveHearts, savedTotalHearts)
+                && transferHostile == savedHostile;
+    }
+
+    private static void clearFloorTransferSnapshot() {
+        transferSnapshotClock = -1f;
+        transferAffectionAge = 0f;
+        transferLimitAge = -1f;
+        transferCurrentRage = -1;
+        transferRageBase = 0;
+        transferMode = -1;
+        transferTotalHearts = -1;
+        transferEffectiveHearts = -1;
+        transferWarnedStage = 0;
+        transferHostile = false;
+    }
+
     public int rage() {
         ensureClocks();
 
-        if (hostileToHero) return 100;
+        float now = globalClock();
+        float elapsed = Math.max(0f, now - affectionClock);
 
-        float elapsed = Math.max(0f, globalClock() - affectionClock);
+        if (hostileToHero) {
+            snapshotFloorTransfer(now, elapsed, 100);
+            return 100;
+        }
+
         int gained = 0;
 
         if (elapsed > AFFECTION_GRACE) {
             gained = (int)Math.floor((elapsed - AFFECTION_GRACE) / RAGE_INTERVAL);
         }
 
-        return Math.max(0, Math.min(100, rageBase + gained));
+        int current = Math.max(0, Math.min(100, rageBase + gained));
+        snapshotFloorTransfer(now, elapsed, current);
+        return current;
     }
 
     public void addRage(int amount) {
@@ -747,6 +855,8 @@ public class YandereAlly extends DirectableAlly {
             state = WANDERING;
             attacksAutomatically = mode != MODE_PEACE;
         }
+
+        snapshotFloorTransfer(globalClock(), 0f, 0);
 
         if (wasHostile) {
             switch (Random.Int(4)) {
@@ -1019,20 +1129,34 @@ public class YandereAlly extends DirectableAlly {
 
     public void applyPersistentState(int savedMode, int savedRage, int savedEffectiveHearts,
                                      int savedTotalHearts, boolean savedHostile) {
+        float now = globalClock();
+        boolean carryTiming = matchesFloorTransfer(savedMode, savedRage, savedEffectiveHearts,
+                savedTotalHearts, savedHostile, now);
+
+        float transferDelta = carryTiming ? Math.max(0f, now - transferSnapshotClock) : 0f;
+        float carriedAffectionAge = carryTiming ? transferAffectionAge + transferDelta : 0f;
+        float carriedLimitAge = carryTiming && transferLimitAge >= 0f
+                ? transferLimitAge + transferDelta : -1f;
+        int carriedRageBase = carryTiming ? transferRageBase : Math.max(0, Math.min(100, savedRage));
+        int carriedWarnedStage = carryTiming ? transferWarnedStage : stage(savedRage);
+
+        clearFloorTransferSnapshot();
+
         mode = savedMode;
         modeBeforeHostile = savedMode;
-        rageBase = Math.max(0, Math.min(100, savedRage));
+        rageBase = Math.max(0, Math.min(100, carriedRageBase));
         effectiveHearts = Math.max(0, savedEffectiveHearts);
         totalHearts = Math.max(effectiveHearts, savedTotalHearts);
-        affectionClock = globalClock();
-        warnedStage = stage(rageBase);
+        affectionClock = now - Math.max(0f, carriedAffectionAge);
+        warnedStage = Math.max(0, carriedWarnedStage);
+        limitReachedClock = carriedLimitAge < 0f ? -1f : now - carriedLimitAge;
 
         hostileToHero = savedHostile;
         if (savedHostile) {
             rageBase = 100;
             alignment = Alignment.ENEMY;
             attacksAutomatically = true;
-            limitReachedClock = globalClock() - LIMIT_SAFE_TIME - 1f;
+            limitReachedClock = now - LIMIT_SAFE_TIME - 1f;
             state = HUNTING;
         } else {
             alignment = Alignment.ALLY;
@@ -1044,9 +1168,11 @@ public class YandereAlly extends DirectableAlly {
     private static final String MODE_BEFORE_HOSTILE = "lab3_yandere_mode_before_hostile";
     private static final String RAGE_BASE = "lab3_yandere_rage_base";
     private static final String AFFECTION_CLOCK = "lab3_yandere_affection_clock";
+    private static final String AFFECTION_AGE = "lab3_yandere_affection_age";
     private static final String LAST_TALK_CLOCK = "lab3_yandere_last_talk_clock";
     private static final String WARNED_STAGE = "lab3_yandere_warned_stage";
     private static final String LIMIT_CLOCK = "lab3_yandere_limit_clock";
+    private static final String LIMIT_AGE = "lab3_yandere_limit_age";
     private static final String REVENGE_TARGET = "lab3_yandere_revenge_target";
     private static final String EMERGENCY = "lab3_yandere_emergency";
     private static final String HOSTILE = "lab3_yandere_hostile";
@@ -1063,17 +1189,21 @@ public class YandereAlly extends DirectableAlly {
     @Override
     public void storeInBundle(Bundle bundle) {
         super.storeInBundle(bundle);
+        ensureClocks();
 
-        rageBase = rage();
-        affectionClock = globalClock();
+        float now = globalClock();
+        float affectionAge = Math.max(0f, now - affectionClock);
+        float limitAge = limitReachedClock < 0f ? -1f : Math.max(0f, now - limitReachedClock);
 
         bundle.put(MODE, mode);
         bundle.put(MODE_BEFORE_HOSTILE, modeBeforeHostile);
         bundle.put(RAGE_BASE, rageBase);
-        bundle.put(AFFECTION_CLOCK, affectionClock);
+        bundle.put(AFFECTION_CLOCK, affectionClock); // 구버전 호환용
+        bundle.put(AFFECTION_AGE, affectionAge);
         bundle.put(LAST_TALK_CLOCK, lastTalkClock);
         bundle.put(WARNED_STAGE, warnedStage);
-        bundle.put(LIMIT_CLOCK, limitReachedClock);
+        bundle.put(LIMIT_CLOCK, limitReachedClock); // 구버전 호환용
+        bundle.put(LIMIT_AGE, limitAge);
         bundle.put(REVENGE_TARGET, revengeTargetID);
         bundle.put(EMERGENCY, emergencyProtect);
         bundle.put(HOSTILE, hostileToHero);
@@ -1095,10 +1225,23 @@ public class YandereAlly extends DirectableAlly {
         if (bundle.contains(MODE)) mode = bundle.getInt(MODE);
         if (bundle.contains(MODE_BEFORE_HOSTILE)) modeBeforeHostile = bundle.getInt(MODE_BEFORE_HOSTILE);
         if (bundle.contains(RAGE_BASE)) rageBase = bundle.getInt(RAGE_BASE);
-        if (bundle.contains(AFFECTION_CLOCK)) affectionClock = bundle.getFloat(AFFECTION_CLOCK);
+
+        if (bundle.contains(AFFECTION_AGE)) {
+            affectionClock = globalClock() - Math.max(0f, bundle.getFloat(AFFECTION_AGE));
+        } else if (bundle.contains(AFFECTION_CLOCK)) {
+            affectionClock = bundle.getFloat(AFFECTION_CLOCK);
+        }
+
         if (bundle.contains(LAST_TALK_CLOCK)) lastTalkClock = bundle.getFloat(LAST_TALK_CLOCK);
         if (bundle.contains(WARNED_STAGE)) warnedStage = bundle.getInt(WARNED_STAGE);
-        if (bundle.contains(LIMIT_CLOCK)) limitReachedClock = bundle.getFloat(LIMIT_CLOCK);
+
+        if (bundle.contains(LIMIT_AGE)) {
+            float age = bundle.getFloat(LIMIT_AGE);
+            limitReachedClock = age < 0f ? -1f : globalClock() - Math.max(0f, age);
+        } else if (bundle.contains(LIMIT_CLOCK)) {
+            limitReachedClock = bundle.getFloat(LIMIT_CLOCK);
+        }
+
         if (bundle.contains(REVENGE_TARGET)) revengeTargetID = bundle.getInt(REVENGE_TARGET);
         if (bundle.contains(EMERGENCY)) emergencyProtect = bundle.getBoolean(EMERGENCY);
         if (bundle.contains(HOSTILE)) hostileToHero = bundle.getBoolean(HOSTILE);
