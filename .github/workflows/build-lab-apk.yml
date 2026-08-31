@@ -23,17 +23,19 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          def replace_once(text, old, new, label):
+          def must_replace(text, old, new, label):
               if new in text:
                   return text
               if old not in text:
                   raise SystemExit(f'anchor not found: {label}')
               return text.replace(old, new, 1)
 
+          # Stage 9 follow-up: Dried Rose jealousy is intentionally brutal.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereJealousy.java')
           text = p.read_text()
-          text = replace_once(text,
+          text = must_replace(text,
               '''    private static final int ROSE_THREAT = 2;
               private static final int ROSE_WARNING = 4;
               private static final int ROSE_KILL = 5;''',
@@ -41,11 +43,11 @@ jobs:
               private static final int ROSE_WARNING = 2;
               private static final int ROSE_KILL = 3;''',
               'rose thresholds')
-          text = replace_once(text,
+          text = must_replace(text,
               '    private static final int HEART_ROSE_BUMP = 2;',
               '    private static final int HEART_ROSE_BUMP = 3;',
               'rose heart bump')
-          text = replace_once(text,
+          text = must_replace(text,
               '''    private static GrowthYandereAlly currentGrowthAlly() {
                   if (Dungeon.hero == null || Dungeon.hero.belongings == null || Dungeon.level == null) return null;
                   RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
@@ -65,17 +67,18 @@ jobs:
               'jealousy ribbon lookup')
           p.write_text(text)
 
+          # Stage 10: bonded RedRibbon can be dropped, curses the hero, and follows floors on the ground.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/RedRibbon.java')
           text = p.read_text()
-          text = replace_once(text,
+          text = must_replace(text,
               'import com.shatteredpixel.shatteredpixeldungeon.Dungeon;\n',
               'import com.shatteredpixel.shatteredpixeldungeon.Dungeon;\nimport com.shatteredpixel.shatteredpixeldungeon.Statistics;\n',
-              'RedRibbon Statistics import')
-          text = replace_once(text,
+              'ribbon Statistics import')
+          text = must_replace(text,
               'import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;\n',
               'import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;\nimport com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;\n',
-              'RedRibbon Buff import')
-          text = replace_once(text,
+              'ribbon Buff import')
+          text = must_replace(text,
               '    public static final int MAX_GROWTH_HEARTS = 48;\n',
               '''    public static final int MAX_GROWTH_HEARTS = 48;
 
@@ -85,8 +88,8 @@ jobs:
               private static final float ABANDONMENT_STAGE_2 = 80f;
               private static final float ABANDONMENT_STAGE_3 = 150f;
               ''',
-              'RedRibbon curse constants')
-          text = replace_once(text,
+              'ribbon curse constants')
+          text = must_replace(text,
               '    private int growthHearts = 0;\n',
               '''    private int growthHearts = 0;
 
@@ -94,8 +97,8 @@ jobs:
               private float abandonmentStartClock = -1f;
               private int abandonmentStage = -1;
               ''',
-              'RedRibbon curse fields')
-          text = replace_once(text,
+              'ribbon curse fields')
+          text = must_replace(text,
               '''    public ArrayList<String> actions(Hero hero) {
                   ArrayList<String> actions = new ArrayList<>();
                   actions.add(AC_MANAGE);
@@ -107,8 +110,8 @@ jobs:
                   actions.add(AC_DROP);
                   return actions;
               }''',
-              'RedRibbon drop action')
-          text = replace_once(text,
+              'ribbon drop action')
+          text = must_replace(text,
               '''    @Override
               public void execute(Hero hero, String action) {
                   super.execute(hero, action);
@@ -145,8 +148,8 @@ jobs:
               }
 
               private String profileName()''',
-              'RedRibbon drop/pickup overrides')
-          text = replace_once(text,
+              'ribbon drop pickup')
+          text = must_replace(text,
               '''    public boolean isGrowthProfile() { return profile == PROFILE_GROWTH; }
               public int profile() { return profile; }
               public int growthHearts() { return growthHearts; }
@@ -244,8 +247,8 @@ jobs:
               }
 
               public boolean recordGrowthHeart() {''',
-              'RedRibbon curse helpers')
-          text = replace_once(text,
+              'ribbon curse helpers')
+          text = must_replace(text,
               '''    public static void beforeTransition() {
                   if (Dungeon.hero == null) return;
                   RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
@@ -317,7 +320,9 @@ jobs:
                               if (heap.sprite != null) heap.sprite.drop(Dungeon.hero.pos);
                               GLog.w("버린 붉은 리본이 계단 근처까지 따라왔다.");
                           }
-                      } else ribbon = findFloorRibbon();
+                      } else {
+                          ribbon = findFloorRibbon();
+                      }
                   }
                   if (ribbon == null) return;
                   if (carried != null && ribbon.abandonmentActive) ribbon.stopAbandonmentCurse(false);
@@ -332,8 +337,8 @@ jobs:
                   if (Dungeon.hero == null) return;
                   RedRibbon ribbon = findRibbonForRun();
                   if (ribbon == null) return;''',
-              'RedRibbon transition handling')
-          text = replace_once(text,
+              'ribbon transition handling')
+          text = must_replace(text,
               '''    private static final String SAVED_GROWTH_HP = "lab3_yandere_saved_growth_hp";
 
               @Override
@@ -373,8 +378,8 @@ jobs:
 
               @Override
               public void storeInBundle(Bundle bundle) {''',
-              'RedRibbon transit buff')
-          text = replace_once(text,
+              'ribbon transit buff')
+          text = must_replace(text,
               '''        bundle.put(SAVED_HOSTILE, savedHostile);
                   bundle.put(SAVED_GROWTH_HP, savedGrowthHP);
               }''',
@@ -385,8 +390,8 @@ jobs:
                           ? Math.max(0f, globalCurseClock() - abandonmentStartClock) : 0f);
                   bundle.put(ABANDONMENT_STAGE, abandonmentStage);
               }''',
-              'RedRibbon store curse')
-          text = replace_once(text,
+              'ribbon store curse')
+          text = must_replace(text,
               '''        if (bundle.contains(SAVED_GROWTH_HP)) savedGrowthHP = bundle.getInt(SAVED_GROWTH_HP);
 
                   if (bundle.contains(PROFILE_LOCKED)) profileLocked = bundle.getBoolean(PROFILE_LOCKED);''',
@@ -397,74 +402,54 @@ jobs:
                   abandonmentStage = bundle.contains(ABANDONMENT_STAGE) ? bundle.getInt(ABANDONMENT_STAGE) : -1;
 
                   if (bundle.contains(PROFILE_LOCKED)) profileLocked = bundle.getBoolean(PROFILE_LOCKED);''',
-              'RedRibbon restore curse')
+              'ribbon restore curse')
           p.write_text(text)
 
-          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/YandereHeart.java')
-          text = p.read_text()
-          text = replace_once(text,
-              '''            RedRibbon ribbon = Dungeon.hero == null
-                          ? null : Dungeon.hero.belongings.getItem(RedRibbon.class);''',
-              '''            RedRibbon ribbon = Dungeon.hero == null
-                          ? null : RedRibbon.findRibbonForRun();''',
-              'heart ribbon lookup')
-          p.write_text(text)
-
+          # Apply the curse to Hero weapon/unarmed damage and attack timing.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java')
           text = p.read_text()
-          text = replace_once(text,
-              '''        if (dmg < 0) dmg = 0;
-                  return dmg;''',
-              '''        dmg = Math.round(dmg * RedRibbon.abandonmentDamageMultiplier(this));
-                  if (dmg < 0) dmg = 0;
-                  return dmg;''',
-              'hero curse damage')
-          text = replace_once(text,
-              '            return delay * belongings.attackingWeapon().delayFactor( this );',
-              '            return delay * belongings.attackingWeapon().delayFactor( this ) * RedRibbon.abandonmentAttackDelayMultiplier(this);',
-              'hero armed curse delay')
-          text = replace_once(text,
-              '            return delay/speed;',
-              '            return (delay/speed) * RedRibbon.abandonmentAttackDelayMultiplier(this);',
-              'hero unarmed curse delay')
+          if 'RedRibbon.abandonmentDamageMultiplier(this)' not in text:
+              m = re.search(r'(\t@Override\n\tpublic int damageRoll\(\) \{.*?\n\t\})', text, re.S)
+              if not m:
+                  raise SystemExit('damageRoll method not found')
+              method = m.group(1)
+              idx = method.rfind('\n\t\treturn dmg;')
+              if idx < 0:
+                  raise SystemExit('damageRoll return not found')
+              method = method[:idx] + '\n\t\tdmg = Math.round(dmg * RedRibbon.abandonmentDamageMultiplier(this));' + method[idx:]
+              text = text[:m.start()] + method + text[m.end():]
+
+          if 'RedRibbon.abandonmentAttackDelayMultiplier(this)' not in text:
+              m = re.search(r'(\tpublic float attackDelay\(\) \{.*?\n\t\})', text, re.S)
+              if not m:
+                  raise SystemExit('attackDelay method not found')
+              method = m.group(1)
+              armed_n = re.subn(r'return\s+delay\s*\*\s*belongings\.attackingWeapon\(\)\.delayFactor\(\s*this\s*\)\s*;',
+                                'return delay * belongings.attackingWeapon().delayFactor( this ) * RedRibbon.abandonmentAttackDelayMultiplier(this);', method, count=1)
+              method = armed_n[0]
+              unarmed_n = re.subn(r'return\s+delay\s*/\s*speed\s*;',
+                                  'return (delay/speed) * RedRibbon.abandonmentAttackDelayMultiplier(this);', method, count=1)
+              method = unarmed_n[0]
+              if armed_n[1] != 1 or unarmed_n[1] != 1:
+                  raise SystemExit(f'attackDelay returns not found armed={armed_n[1]} unarmed={unarmed_n[1]}')
+              text = text[:m.start()] + method + text[m.end():]
           p.write_text(text)
 
+          # Move a dropped bonded ribbon into a hidden hero payload before level save.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/InterlevelScene.java')
           text = p.read_text()
-          text = replace_once(text,
-              'import com.shatteredpixel.shatteredpixeldungeon.items.LostBackpack;\n',
-              'import com.shatteredpixel.shatteredpixeldungeon.items.LostBackpack;\nimport com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;\n',
-              'Interlevel RedRibbon import')
-          text = replace_once(text,
-              '''        } else {
-                      if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {''',
-              '''        } else {
-                      RedRibbon.beforeTransition();
-                      if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {''',
-              'descend transition hook')
-          text = replace_once(text,
-              '''    private void fall() throws IOException {
-
-                  Mob.holdAllies( Dungeon.level );''',
-              '''    private void fall() throws IOException {
-
-                  RedRibbon.beforeTransition();
-                  Mob.holdAllies( Dungeon.level );''',
-              'fall transition hook')
-          text = replace_once(text,
-              '''    private void ascend() throws IOException {
-                  if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {''',
-              '''    private void ascend() throws IOException {
-                  RedRibbon.beforeTransition();
-                  if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {''',
-              'ascend transition hook')
-          text = replace_once(text,
-              '''    private void returnTo() throws IOException {
-                  Mob.holdAllies( Dungeon.level );''',
-              '''    private void returnTo() throws IOException {
-                  RedRibbon.beforeTransition();
-                  Mob.holdAllies( Dungeon.level );''',
-              'return transition hook')
+          if 'import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;' not in text:
+              text = must_replace(text,
+                  'import com.shatteredpixel.shatteredpixeldungeon.items.LostBackpack;\n',
+                  'import com.shatteredpixel.shatteredpixeldungeon.items.LostBackpack;\nimport com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;\n',
+                  'interlevel ribbon import')
+          for method_name in ('descend', 'fall', 'ascend', 'returnTo'):
+              marker = f'private void {method_name}() throws IOException {{'
+              hook = marker + '\n\t\tRedRibbon.beforeTransition();'
+              if hook not in text:
+                  if marker not in text:
+                      raise SystemExit(f'interlevel method not found: {method_name}')
+                  text = text.replace(marker, hook, 1)
           p.write_text(text)
           PY
 
@@ -473,7 +458,6 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereJealousy.java \
                     core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/RedRibbon.java \
-                    core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/YandereHeart.java \
                     core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java \
                     core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/InterlevelScene.java
             git commit -m "feat: add ribbon abandonment curse"
