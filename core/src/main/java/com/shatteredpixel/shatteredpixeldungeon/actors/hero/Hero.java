@@ -78,6 +78,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.Smite;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereAlly;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereJealousy;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Monk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Snake;
 import com.shatteredpixel.shatteredpixeldungeon.effects.CellEmitter;
@@ -1003,6 +1004,9 @@ public class Hero extends Char {
 			
 			ready();
 			sprite.turnTo( pos, ch.pos );
+			if (YandereJealousy.onHeroInteract(ch)) {
+				return true;
+			}
 			return ch.interact(this);
 			
 		} else {
