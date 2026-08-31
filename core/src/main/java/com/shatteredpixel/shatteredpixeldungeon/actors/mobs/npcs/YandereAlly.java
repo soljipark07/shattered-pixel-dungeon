@@ -12,6 +12,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.Wand;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.YandereSprite;
+import com.shatteredpixel.shatteredpixeldungeon.ui.BossHealthBar;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Random;
@@ -53,6 +54,7 @@ public class YandereAlly extends DirectableAlly {
     private int rageBase = 0;
     private float affectionClock = -1f;
     private float lastTalkClock = -999999f;
+    private float bossRagePauseClock = -1f;
 
     // RedRibbon은 층 이동 때 얀데레 본체를 새로 만든다.
     // 그래서 리본이 savedRage만 넘겨도 마지막 하트 타이머가 리셋되지 않도록
@@ -280,10 +282,22 @@ public class YandereAlly extends DirectableAlly {
         } else if (emergencyProtect) {
             alignment = Alignment.ALLY;
             attacksAutomatically = true; // 공격 금지 명령도 무시
-            Char revenge = revengeTarget();
-            if (revenge != null) {
-                targetChar(revenge);
+
+            // 긴급 보호에서는 먼저 실제 보호 대상을 확정한다.
+            // 복수대상이 없는데 주변 적이 있는 경우 WANDERING으로 되돌렸다가
+            // 부모 AI가 다시 HUNTING으로 바꾸는 0턴 루프가 생길 수 있으므로,
+            // 주변 위협도 여기서 바로 targetChar()로 고정한다.
+            Char protectTarget = revengeTarget();
+            if (protectTarget == null) {
+                protectTarget = nearestEnemyNearHero(3);
+            }
+
+            if (protectTarget != null) {
+                clearDefensingPos();
+                targetChar(protectTarget);
             } else {
+                clearEnemy();
+                clearDefensingPos();
                 state = WANDERING;
             }
         } else if (mode == MODE_PEACE) {
@@ -662,6 +676,27 @@ public class YandereAlly extends DirectableAlly {
         return Statistics.duration + Actor.now();
     }
 
+    private float rageClockNow() {
+        float now = globalClock();
+
+        // 보스 체력바가 실제 보스에게 할당된 동안에는 자연 광란도 시간만 멈춘다.
+        // 보스전이 끝나면 멈춰 있던 시간만큼 affectionClock을 앞으로 밀어
+        // 전투 시간이 종료 직후 한꺼번에 광란도로 환산되지 않게 한다.
+        if (BossHealthBar.isAssigned()) {
+            if (bossRagePauseClock < 0f) {
+                bossRagePauseClock = now;
+            }
+            return bossRagePauseClock;
+        }
+
+        if (bossRagePauseClock >= 0f) {
+            affectionClock += Math.max(0f, now - bossRagePauseClock);
+            bossRagePauseClock = -1f;
+        }
+
+        return now;
+    }
+
     private void ensureClocks() {
         float now = globalClock();
         if (affectionClock < 0f) affectionClock = now;
@@ -724,11 +759,11 @@ public class YandereAlly extends DirectableAlly {
     public int rage() {
         ensureClocks();
 
-        float now = globalClock();
-        float elapsed = Math.max(0f, now - affectionClock);
+        float rageNow = rageClockNow();
+        float elapsed = Math.max(0f, rageNow - affectionClock);
 
         if (hostileToHero) {
-            snapshotFloorTransfer(now, elapsed, 100);
+            snapshotFloorTransfer(globalClock(), elapsed, 100);
             return 100;
         }
 
@@ -739,14 +774,14 @@ public class YandereAlly extends DirectableAlly {
         }
 
         int current = Math.max(0, Math.min(100, rageBase + gained));
-        snapshotFloorTransfer(now, elapsed, current);
+        snapshotFloorTransfer(globalClock(), elapsed, current);
         return current;
     }
 
     public void addRage(int amount) {
         int current = rage();
         rageBase = Math.max(0, Math.min(100, current + amount));
-        affectionClock = globalClock();
+        affectionClock = rageClockNow();
         onRageChanged();
     }
 
@@ -773,7 +808,7 @@ public class YandereAlly extends DirectableAlly {
 
     public int turnsSinceAffection() {
         ensureClocks();
-        return Math.max(0, Math.round(globalClock() - affectionClock));
+        return Math.max(0, Math.round(rageClockNow() - affectionClock));
     }
 
     public int floorTurns() {
@@ -816,7 +851,8 @@ public class YandereAlly extends DirectableAlly {
 
         // 대화는 작은 애정표현. 하트처럼 완전 초기화는 하지 않음.
         float now = globalClock();
-        affectionClock = Math.min(now, affectionClock + TALK_TIME_CREDIT);
+        float rageNow = rageClockNow();
+        affectionClock = Math.min(rageNow, affectionClock + TALK_TIME_CREDIT);
         lastTalkClock = now;
         warnedStage = stage(rage());
 
@@ -850,7 +886,7 @@ public class YandereAlly extends DirectableAlly {
         if (effective) effectiveHearts++;
 
         rageBase = 0;
-        affectionClock = globalClock();
+        affectionClock = rageClockNow();
         warnedStage = 0;
         limitReachedClock = -1f;
 
@@ -1137,7 +1173,7 @@ public class YandereAlly extends DirectableAlly {
         hostileToHero = false;
         alignment = Alignment.ALLY;
         rageBase = Math.max(0, Math.min(100, value));
-        affectionClock = globalClock();
+        affectionClock = rageClockNow();
         warnedStage = Math.max(0, stage(rageBase) - 1);
         limitReachedClock = rageBase >= 100 ? globalClock() : -1f;
     }
@@ -1207,7 +1243,8 @@ public class YandereAlly extends DirectableAlly {
         ensureClocks();
 
         float now = globalClock();
-        float affectionAge = Math.max(0f, now - affectionClock);
+        float rageNow = rageClockNow();
+        float affectionAge = Math.max(0f, rageNow - affectionClock);
         float limitAge = limitReachedClock < 0f ? -1f : Math.max(0f, now - limitReachedClock);
 
         bundle.put(MODE, mode);
