@@ -25,8 +25,8 @@ public class YandereHeart extends Item {
         return "얀데레에게 애정을 확실하게 전하는 하트다.\n\n"
                 + "얀데레에게 직접 던지면 광란도가 즉시 0으로 초기화되고 애정 타이머도 처음부터 다시 시작한다. "
                 + "광란 추격 중에도 통한다.\n\n"
-                + "광란도 20 이상일 때 건넨 하트만 '유효 하트'로 기록된다. "
-                + "한꺼번에 몰아먹여 성장치를 쌓는 것은 막아둔 상태다.";
+                + "성장형 얀데레에게 직접 건넨 하트는 타이밍과 관계없이 성장 하트로 1개 기록되며, 최대 48개까지 쌓인다. "
+                + "광란도 20 이상일 때 건넨 하트만 기록되는 '유효 하트'는 성장 하트와 별개의 관계 기록이다.";
     }
 
     @Override
@@ -44,7 +44,18 @@ public class YandereHeart extends Item {
         Char ch = Actor.findChar(cell);
         if (ch instanceof YandereAlly) {
             ((YandereAlly)ch).receiveHeart();
-            GLog.p("하트를 건넸다. 얀데레의 광란도가 0으로 돌아갔다.");
+
+            RedRibbon ribbon = Dungeon.hero == null
+                    ? null : Dungeon.hero.belongings.getItem(RedRibbon.class);
+            boolean grew = ribbon != null && ribbon.recordGrowthHeart();
+
+            if (grew) {
+                GLog.p("하트를 건넸다. 광란도가 0으로 돌아갔고 성장 하트가 "
+                        + ribbon.growthHearts() + "/" + RedRibbon.MAX_GROWTH_HEARTS + "이 됐다.");
+            } else {
+                GLog.p("하트를 건넸다. 얀데레의 광란도가 0으로 돌아갔다.");
+            }
+
             Item.updateQuickslot();
             return;
         }
