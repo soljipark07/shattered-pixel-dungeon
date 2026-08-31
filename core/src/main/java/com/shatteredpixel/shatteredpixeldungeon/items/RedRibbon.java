@@ -27,24 +27,18 @@ public class RedRibbon extends Item {
 
     private int allyID = 0;
     private boolean summoned = false;
-
-    // 한 번 소환하면 해당 플레이의 얀데레 유형은 고정된다.
-    // 구버전 세이브는 기존 동작 보존을 위해 기본값이 치트형이다.
     private int profile = PROFILE_CHEAT;
     private boolean profileLocked = false;
     private int growthHearts = 0;
 
-    // 9하트 이후의 '하트 놓침' 경고는 한 층에서 한 번만 출력한다.
     private int lastHeartWarningDepth = Integer.MIN_VALUE;
     private int lastHeartWarningBranch = Integer.MIN_VALUE;
 
-    // 층 이동 때 아군 본체가 사라져도 리본이 상태를 들고 감.
     private int savedMode = YandereAlly.MODE_GUARD;
     private int savedRage = 0;
     private int savedEffectiveHearts = 0;
     private int savedTotalHearts = 0;
     private boolean savedHostile = false;
-    // 성장형만 층 이동 때 현재 HP를 이어받는다. -1은 첫 소환/기존 완전회복 동작.
     private int savedGrowthHP = -1;
 
     {
@@ -55,9 +49,7 @@ public class RedRibbon extends Item {
     }
 
     @Override
-    public String name() {
-        return "붉은 리본";
-    }
+    public String name() { return "붉은 리본"; }
 
     @Override
     public String desc() {
@@ -68,14 +60,9 @@ public class RedRibbon extends Item {
                 + "얀데레에게 던져야 한다.";
     }
 
-    @Override
-    public boolean isIdentified() { return true; }
-
-    @Override
-    public boolean isUpgradable() { return false; }
-
-    @Override
-    public int value() { return 0; }
+    @Override public boolean isIdentified() { return true; }
+    @Override public boolean isUpgradable() { return false; }
+    @Override public int value() { return 0; }
 
     @Override
     public ArrayList<String> actions(Hero hero) {
@@ -96,21 +83,10 @@ public class RedRibbon extends Item {
         if (AC_MANAGE.equals(action)) showMainMenu(hero);
     }
 
-    private String profileName() {
-        return profile == PROFILE_GROWTH ? "성장형" : "치트형";
-    }
-
-    public boolean isGrowthProfile() {
-        return profile == PROFILE_GROWTH;
-    }
-
-    public int profile() {
-        return profile;
-    }
-
-    public int growthHearts() {
-        return growthHearts;
-    }
+    private String profileName() { return profile == PROFILE_GROWTH ? "성장형" : "치트형"; }
+    public boolean isGrowthProfile() { return profile == PROFILE_GROWTH; }
+    public int profile() { return profile; }
+    public int growthHearts() { return growthHearts; }
 
     public boolean recordGrowthHeart() {
         if (!isGrowthProfile() || growthHearts >= MAX_GROWTH_HEARTS) return false;
@@ -118,16 +94,23 @@ public class RedRibbon extends Item {
         return true;
     }
 
+    private String primaryCommandLabel(YandereAlly ally) {
+        if (ally == null) return "소환";
+        if (ally instanceof GrowthYandereAlly) {
+            GrowthYandereAlly growth = (GrowthYandereAlly)ally;
+            return growth.hasEmergencyRecall() ? "도움 요청하기" : "내 옆으로 오라고 하기";
+        }
+        return "내 옆으로 불러오기";
+    }
+
     private void showMainMenu(final Hero hero) {
         final YandereAlly ally = findAlly();
-
         String summary;
         String profileSummary = "유형: " + profileName()
                 + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "");
 
         if (ally == null) {
-            summary = profileSummary + "\n"
-                    + (summoned
+            summary = profileSummary + "\n" + (summoned
                     ? "얀데레가 현재 층에 없다.\n다음 영웅 행동 때 자동으로 따라온다."
                     : "현재 소환된 얀데레: 없음");
         } else {
@@ -143,7 +126,7 @@ public class RedRibbon extends Item {
                 new ItemSprite(this),
                 "붉은 리본",
                 summary,
-                ally == null ? "소환" : "내 옆으로 불러오기",
+                primaryCommandLabel(ally),
                 "상태 보기",
                 "태세 변경",
                 "대화하기",
@@ -207,22 +190,16 @@ public class RedRibbon extends Item {
 
     public YandereAlly findAlly() {
         if (Dungeon.level == null) return null;
-
         if (allyID != 0) {
             Actor a = Actor.findById(allyID);
-            if (a instanceof YandereAlly && ((YandereAlly)a).isAlive()
-                    && Dungeon.level.mobs.contains(a)) {
-                return (YandereAlly)a;
-            }
+            if (a instanceof YandereAlly && ((YandereAlly)a).isAlive() && Dungeon.level.mobs.contains(a)) return (YandereAlly)a;
         }
-
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (mob instanceof YandereAlly && mob.isAlive()) {
                 allyID = mob.id();
                 return (YandereAlly)mob;
             }
         }
-
         allyID = 0;
         return null;
     }
@@ -231,38 +208,26 @@ public class RedRibbon extends Item {
         for (int off : PathFinder.NEIGHBOURS8) {
             int cell = hero.pos + off;
             if (cell < 0 || cell >= Dungeon.level.length()) continue;
-            if (Actor.findChar(cell) == null
-                    && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) {
-                return cell;
-            }
+            if (Actor.findChar(cell) == null && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) return cell;
         }
         return -1;
     }
 
-
     private int farthestRespawnCell(YandereAlly ally, Hero hero) {
         if (Dungeon.level == null || hero == null) return -1;
-
         int best = -1;
         int bestDist = -1;
-
         for (int i = 0; i < 32; i++) {
             int cell = Dungeon.level.randomRespawnCell(ally);
             if (cell == -1) continue;
-
             int d = Dungeon.level.distance(cell, hero.pos);
-            if (d > bestDist) {
-                best = cell;
-                bestDist = d;
-            }
+            if (d > bestDist) { best = cell; bestDist = d; }
         }
-
         return best;
     }
 
     private void spawnOrRecall(Hero hero, boolean manual) {
         if (Dungeon.level == null || hero == null) return;
-
         YandereAlly ally = findAlly();
 
         if (ally != null) {
@@ -271,12 +236,28 @@ public class RedRibbon extends Item {
                 return;
             }
 
+            if (ally instanceof GrowthYandereAlly) {
+                GrowthYandereAlly growth = (GrowthYandereAlly)ally;
+                if (growth.hasEmergencyRecall()) {
+                    if (!growth.requestHelp()) {
+                        GLog.w("지금은 얀데레가 네 옆으로 올 안전한 자리가 없어.");
+                        return;
+                    }
+                } else {
+                    // 27하트 전에는 순간이동이 아직 없다. 명령을 받으면 직접 걸어서 돌아온다.
+                    growth.followHero();
+                    growth.yell("응♡ 지금 갈게. 거기 있어, 금방 네 옆으로 갈게.");
+                }
+                captureFrom(growth);
+                return;
+            }
+
+            // 치트형은 기존 즉시 귀환을 그대로 유지한다.
             int cell = adjacentCell(hero);
             if (cell == -1) {
                 GLog.w("옆에 얀데레가 설 자리가 없어.");
                 return;
             }
-
             ScrollOfTeleportation.appear(ally, cell);
             ally.followHero();
             ally.yell("불렀어? 헤헤♡ 바로 왔어. 나 필요했지?");
@@ -290,27 +271,22 @@ public class RedRibbon extends Item {
 
     private void createOnCurrentFloor(Hero hero, boolean manual) {
         if (Dungeon.level == null || hero == null || findAlly() != null) return;
-
         YandereAlly ally;
         if (isGrowthProfile()) {
             GrowthYandereAlly growthAlly = new GrowthYandereAlly();
             growthAlly.configureGrowth(growthHearts, savedGrowthHP);
             ally = growthAlly;
-        } else {
-            ally = new YandereAlly();
-        }
-        ally.applyPersistentState(savedMode, savedRage, savedEffectiveHearts, savedTotalHearts, savedHostile);
+        } else ally = new YandereAlly();
 
+        ally.applyPersistentState(savedMode, savedRage, savedEffectiveHearts, savedTotalHearts, savedHostile);
         int cell;
         if (savedHostile) {
-            // LAB3-y021: 광란 상태로 계단을 넘어와도 가능한 한 멀리서 추격 재개.
             cell = farthestRespawnCell(ally, hero);
             if (cell == -1) cell = adjacentCell(hero);
         } else {
             cell = adjacentCell(hero);
             if (cell == -1) cell = Dungeon.level.randomRespawnCell(ally);
         }
-
         if (cell == -1) {
             GLog.w("얀데레를 놓을 수 있는 칸을 찾지 못했어.");
             return;
@@ -319,19 +295,12 @@ public class RedRibbon extends Item {
         profileLocked = true;
         ally.pos = cell;
         allyID = ally.id();
-
         GameScene.add(ally, 0f);
         Dungeon.level.occupyCell(ally);
 
-        if (manual && !savedHostile) {
-            ally.yell("찾았다♡ 이제 나 두고 혼자 가지 마. 끝까지 같이 가는 거야.");
-        } else if (!manual && !savedHostile) {
-            ally.queueFloorArrivalDialogue(false);
-        } else if (savedHostile) {
-            // 스프라이트가 완전히 붙기 전 yell()이 씹힐 수 있어서 다음 act에 예약.
-            ally.queueFloorArrivalDialogue(true);
-        }
-
+        if (manual && !savedHostile) ally.yell("찾았다♡ 이제 나 두고 혼자 가지 마. 끝까지 같이 가는 거야.");
+        else if (!manual && !savedHostile) ally.queueFloorArrivalDialogue(false);
+        else if (savedHostile) ally.queueFloorArrivalDialogue(true);
         Item.updateQuickslot();
     }
 
@@ -350,12 +319,9 @@ public class RedRibbon extends Item {
 
     private boolean currentFloorHasYandereHeart() {
         if (Dungeon.level == null || Dungeon.level.heaps == null) return false;
-
         for (Heap heap : Dungeon.level.heaps.valueList()) {
             if (heap == null) continue;
-            for (Item item : heap.items) {
-                if (item instanceof YandereHeart) return true;
-            }
+            for (Item item : heap.items) if (item instanceof YandereHeart) return true;
         }
         return false;
     }
@@ -364,13 +330,9 @@ public class RedRibbon extends Item {
         if (!isGrowthProfile() || growthHearts < GrowthYandereAlly.HEART_MISSED_WARNING) return;
         if (lastHeartWarningDepth == Dungeon.depth && lastHeartWarningBranch == Dungeon.branch) return;
         if (!currentFloorHasYandereHeart()) return;
-
         lastHeartWarningDepth = Dungeon.depth;
         lastHeartWarningBranch = Dungeon.branch;
-
-        if (ally != null) {
-            ally.yell("잠깐. 이 층에 하트가 아직 남아 있어. 그냥 갈 거야?");
-        }
+        if (ally != null) ally.yell("잠깐. 이 층에 하트가 아직 남아 있어. 그냥 갈 거야?");
         GLog.w("이 층에 아직 애정의 하트가 남아 있다.");
     }
 
@@ -378,7 +340,6 @@ public class RedRibbon extends Item {
         if (Dungeon.hero == null) return;
         RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
         if (ribbon == null) return;
-
         YandereAlly ally = ribbon.findAlly();
         ribbon.warnAboutMissedHeart(ally);
         if (ally != null) ribbon.captureFrom(ally);
@@ -387,30 +348,21 @@ public class RedRibbon extends Item {
 
     public static void ensureYanderePresent() {
         if (Dungeon.hero == null || Dungeon.level == null) return;
-
         RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
         if (ribbon == null || !ribbon.summoned) return;
-
         YandereAlly ally = ribbon.findAlly();
-        if (ally == null) {
-            ribbon.createOnCurrentFloor(Dungeon.hero, false);
-        } else {
-            ribbon.captureFrom(ally);
-        }
+        if (ally == null) ribbon.createOnCurrentFloor(Dungeon.hero, false);
+        else ribbon.captureFrom(ally);
     }
 
     public static void onYandereDied(YandereAlly ally) {
         if (Dungeon.hero == null) return;
-
         RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
         if (ribbon == null) return;
-
-        // 죽여버린 경우 다음 턴 즉시 무한부활은 하지 않음.
         ribbon.summoned = false;
         ribbon.allyID = 0;
         ribbon.savedHostile = false;
         ribbon.savedRage = 0;
-        // 하트 2개 부활 규칙은 후반 단계에서 넣는다. 지금은 기존 재소환 동작을 유지한다.
         ribbon.savedGrowthHP = -1;
         ribbon.profileLocked = true;
         if (ally != null) {
@@ -422,22 +374,16 @@ public class RedRibbon extends Item {
 
     private void showStatus() {
         YandereAlly ally = findAlly();
-
         if (ally == null) {
             String text = "유형: " + profileName()
                     + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "")
-                    + "\n\n"
-                    + (summoned
-                    ? "층 이동 직후라면 영웅이 한 번 행동하면 자동으로 따라온다."
-                    : "현재 소환된 얀데레가 없어.");
+                    + "\n\n" + (summoned ? "층 이동 직후라면 영웅이 한 번 행동하면 자동으로 따라온다." : "현재 소환된 얀데레가 없어.");
             GameScene.show(new WndOptions("얀데레 상태", text, "닫기"));
             return;
         }
 
         captureFrom(ally);
-
-        String text =
-                "유형: " + profileName()
+        String text = "유형: " + profileName()
                 + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "")
                 + "\n태세: " + ally.modeName()
                 + "\n감정: " + ally.emotionName()
@@ -451,8 +397,7 @@ public class RedRibbon extends Item {
                 + "\n공격속도: x" + String.format("%.2f", ally.statAttackSpeed())
                 + (ally instanceof GrowthYandereAlly
                     ? "\n자연회복: " + Math.round(((GrowthYandereAlly)ally).statRegenInterval())
-                        + "턴마다 최대 HP의 "
-                        + Math.round(((GrowthYandereAlly)ally).statRegenPercent() * 100) + "%" : "")
+                        + "턴마다 최대 HP의 " + Math.round(((GrowthYandereAlly)ally).statRegenPercent() * 100) + "%" : "")
                 + "\n처치 수(대략): " + ally.kills()
                 + "\n현재 표적: " + ally.currentTargetName()
                 + "\n\n마지막 하트급 애정표현: " + ally.turnsSinceAffection() + "턴 전"
@@ -466,29 +411,21 @@ public class RedRibbon extends Item {
                 + "\n이후 " + Math.round(YandereAlly.RAGE_INTERVAL) + "턴마다 광란 +1"
                 + "\n100 도달 후 " + Math.round(YandereAlly.LIMIT_SAFE_TIME) + "턴 확정 안전"
                 + "\n그 뒤 얀데레 행동마다 붕괴 확률 " + Math.round(YandereAlly.SNAP_CHANCE_PER_ACT * 100) + "%"
-                + (ally.rage() >= 100 && !ally.hostileToHero()
-                    ? "\n현재 한계 상태 경과: " + ally.turnsAtLimit() + "턴" : "")
+                + (ally.rage() >= 100 && !ally.hostileToHero() ? "\n현재 한계 상태 경과: " + ally.turnsAtLimit() + "턴" : "")
                 + "\n\n※ 성장형의 성장 하트는 받은 하트/유효 하트와 별도로 0~48에서 관리한다.";
-
         GameScene.show(new WndOptions("얀데레 상태", text, "닫기"));
     }
 
     private void showModeMenu() {
         final YandereAlly ally = findAlly();
-
         if (ally == null) {
             GLog.w("먼저 얀데레를 소환해.");
             return;
         }
-
-        final int guardRange = ally instanceof GrowthYandereAlly
-                ? ((GrowthYandereAlly)ally).guardRange() : 2;
-
+        final int guardRange = ally instanceof GrowthYandereAlly ? ((GrowthYandereAlly)ally).guardRange() : 2;
         GameScene.show(new WndOptions(
                 "전투 태세",
-                "현재: " + ally.modeName()
-                        + (ally.emergencyProtect()
-                        ? "\n\n주인공 저체력 때문에 현재 명령보다 강제 보호가 우선된다." : ""),
+                "현재: " + ally.modeName() + (ally.emergencyProtect() ? "\n\n주인공 저체력 때문에 현재 명령보다 강제 보호가 우선된다." : ""),
                 "광폭 — 층 전체 적을 찾아가서 학살",
                 "수비 — 주인공 " + guardRange + "칸 안의 적만 공격",
                 "공격 금지 — 평소엔 따라오기만 함"
@@ -517,22 +454,14 @@ public class RedRibbon extends Item {
 
     private void showDebugMenu() {
         final YandereAlly ally = findAlly();
-
         if (ally == null) {
             GLog.w("먼저 얀데레를 소환해.");
             return;
         }
-
         GameScene.show(new WndOptions(
                 "테스트/밸런스",
                 "실제 하트는 맵에도 생성된다. 이 메뉴는 빠른 테스트용.",
-                "광란 0",
-                "광란 50",
-                "광란 70",
-                "광란 85",
-                "광란 95",
-                "광란 100",
-                "하트 x3 생성"
+                "광란 0", "광란 50", "광란 70", "광란 85", "광란 95", "광란 100", "하트 x3 생성"
         ) {
             @Override
             protected void onSelect(int index) {
@@ -575,7 +504,6 @@ public class RedRibbon extends Item {
     public void storeInBundle(Bundle bundle) {
         YandereAlly ally = findAlly();
         if (ally != null) captureFrom(ally);
-
         super.storeInBundle(bundle);
         bundle.put(ALLY_ID, allyID);
         bundle.put(SUMMONED, summoned);
@@ -598,9 +526,7 @@ public class RedRibbon extends Item {
         if (bundle.contains(ALLY_ID)) allyID = bundle.getInt(ALLY_ID);
         if (bundle.contains(SUMMONED)) summoned = bundle.getBoolean(SUMMONED);
         if (bundle.contains(PROFILE)) profile = bundle.getInt(PROFILE);
-        if (bundle.contains(GROWTH_HEARTS)) {
-            growthHearts = Math.max(0, Math.min(MAX_GROWTH_HEARTS, bundle.getInt(GROWTH_HEARTS)));
-        }
+        if (bundle.contains(GROWTH_HEARTS)) growthHearts = Math.max(0, Math.min(MAX_GROWTH_HEARTS, bundle.getInt(GROWTH_HEARTS)));
         if (bundle.contains(HEART_WARNING_DEPTH)) lastHeartWarningDepth = bundle.getInt(HEART_WARNING_DEPTH);
         if (bundle.contains(HEART_WARNING_BRANCH)) lastHeartWarningBranch = bundle.getInt(HEART_WARNING_BRANCH);
         if (bundle.contains(SAVED_MODE)) savedMode = bundle.getInt(SAVED_MODE);
@@ -610,10 +536,8 @@ public class RedRibbon extends Item {
         if (bundle.contains(SAVED_HOSTILE)) savedHostile = bundle.getBoolean(SAVED_HOSTILE);
         if (bundle.contains(SAVED_GROWTH_HP)) savedGrowthHP = bundle.getInt(SAVED_GROWTH_HP);
 
-        if (bundle.contains(PROFILE_LOCKED)) {
-            profileLocked = bundle.getBoolean(PROFILE_LOCKED);
-        } else {
-            // 구버전 세이브는 기존 치트형으로 취급하고, 이미 소환/성장 기록이 있다면 유형을 고정한다.
+        if (bundle.contains(PROFILE_LOCKED)) profileLocked = bundle.getBoolean(PROFILE_LOCKED);
+        else {
             profile = PROFILE_CHEAT;
             profileLocked = summoned || savedTotalHearts > 0;
             growthHearts = 0;
