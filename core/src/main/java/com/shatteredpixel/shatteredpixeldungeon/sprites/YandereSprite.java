@@ -36,8 +36,12 @@ public class YandereSprite extends MobSprite {
         for (int state = NORMAL; state <= HOSTILE; state++) {
             int first = state * FRAMES_PER_STATE;
 
-            idleByState[state] = new Animation(2, true);
-            idleByState[state].frames(body, first, first + 1);
+            // Match the regular human hero idle cadence: hold the base pose
+            // for several beats instead of rapidly alternating both frames.
+            idleByState[state] = new Animation(1, true);
+            idleByState[state].frames(body,
+                    first, first, first, first + 1,
+                    first, first, first + 1, first + 1);
 
             runByState[state] = new Animation(20, true);
             runByState[state].frames(body,
@@ -80,6 +84,26 @@ public class YandereSprite extends MobSprite {
         // called, so the approved NORMAL reaction is always appropriate.
         switchVisualState(NORMAL);
         play(heartByState[NORMAL], true);
+    }
+
+    private void updateRunCadence() {
+        int frameRate = 20;
+
+        if (ch instanceof YandereAlly && Dungeon.hero != null && Dungeon.level != null) {
+            YandereAlly ally = (YandereAlly) ch;
+            int heroDistance = Dungeon.level.distance(ally.pos, Dungeon.hero.pos);
+
+            // Beside the hero she walks at the same visual cadence as a human
+            // character. When she runs off at 1.5x ally speed, the animation
+            // accelerates by the same factor. Hostile pursuit remains 1x.
+            if (!ally.hostileToHero() && heroDistance > 2) {
+                frameRate = 30;
+            }
+        }
+
+        if (run != null) {
+            run.delay = 1f / frameRate;
+        }
     }
 
     private int desiredVisualState() {
@@ -132,6 +156,7 @@ public class YandereSprite extends MobSprite {
     @Override
     public void update() {
         switchVisualState(desiredVisualState());
+        updateRunCadence();
         hostileAura.update();
         super.update();
     }
