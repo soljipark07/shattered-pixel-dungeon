@@ -61,7 +61,7 @@ public class LifeLink extends FlavourBuff {
 
 	@Override
 	public void restoreFromBundle( Bundle bundle ) {
-		super.restoreFromBundle(bundle);
+		super.restoreFromBundle( bundle );
 		object = bundle.getInt( OBJECT );
 	}
 
