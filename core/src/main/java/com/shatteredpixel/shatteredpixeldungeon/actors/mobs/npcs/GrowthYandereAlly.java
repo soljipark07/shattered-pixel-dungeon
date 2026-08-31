@@ -822,23 +822,34 @@ public class GrowthYandereAlly extends YandereAlly {
         }
     }
 
-    private void maybePlayHighLaugh(int kind, int tier, int band) {
-        if (tier < 3) return;
-        float now = globalGrowthClock();
-        if (now - lastHighLaughClock < HIGH_LAUGH_COOLDOWN) return;
+    private void maybePlayLaugh(int kind, int tier, int band) {
+    float now = globalGrowthClock();
+    if (now - lastHighLaughClock < HIGH_LAUGH_COOLDOWN) return;
 
-        float chance;
+    final boolean severeObsession = tier >= 3;
+    final String laughSound = severeObsession
+            ? Assets.Sounds.YANDERE_LAUGH_HIGH
+            : Assets.Sounds.YANDERE_LAUGH_MILD;
+
+    float chance;
+    if (severeObsession) {
         if (kind == DIALOGUE_HOSTILE) chance = 0.65f;
         else if (kind == DIALOGUE_WARNING && band >= 3) chance = 0.50f;
         else if (tier >= 4) chance = 0.20f;
         else if (band >= 3) chance = 0.30f;
         else chance = 0.10f;
-
-        if (Random.Float() < chance) {
-            Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);
-            lastHighLaughClock = now;
-        }
+    } else {
+        if (kind == DIALOGUE_HOSTILE) chance = 0.45f;
+        else if (kind == DIALOGUE_WARNING && band >= 3) chance = 0.35f;
+        else if (band >= 3) chance = 0.20f;
+        else chance = 0.08f;
     }
+
+    if (Random.Float() < chance) {
+        Sample.INSTANCE.play(laughSound);
+        lastHighLaughClock = now;
+    }
+}
 
     @Override
     public void yell(String text) {
@@ -851,7 +862,7 @@ public class GrowthYandereAlly extends YandereAlly {
         int band = rageBand();
         String transformed = transformedGrowthDialogue(text, kind);
         super.yell(transformed);
-        maybePlayHighLaugh(kind, tier, band);
+        maybePlayLaugh(kind, tier, band);
     }
 
     @Override

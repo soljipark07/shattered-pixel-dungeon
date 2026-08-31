@@ -139,7 +139,7 @@ public class Assets {
 		public static final String CITY_2               = "music/city_2.ogg";
 		public static final String CITY_3               = "music/city_3.ogg";
 		public static final String CITY_TENSE           = "music/city_tense.ogg";
-		public static final String CITY_BOSS            = "music/city_boss.mp3";
+		public static final String CITY_BOSS            = "music/city_boss.ogg";
 		public static final String CITY_BOSS_FINALE     = "music/city_boss_finale.ogg";
 
 		public static final String HALLS_1              = "music/halls_1.ogg";
