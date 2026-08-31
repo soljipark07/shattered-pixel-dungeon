@@ -33,11 +33,31 @@ public class LifeLink extends FlavourBuff {
 
 	public int object = 0;
 
+	// LAB3 growth-yandere: an exact LifeLink instance is required because Char.damage()
+	// checks buff(LifeLink.class) before splitting damage. This flag keeps the yandere's
+	// internal guard link invisible while leaving normal cleric Life Link unchanged.
+	public boolean yandereGuardLink = false;
+
 	private static final String OBJECT    = "object";
+	private static final String YANDERE_GUARD_LINK = "lab3_yandere_guard_link";
 
 	{
 		type = buffType.POSITIVE;
 		announced = true;
+	}
+
+	public static LifeLink attachYandereGuardLink(Char target, int object, float duration) {
+		LifeLink link = new LifeLink();
+		link.object = object;
+		link.yandereGuardLink = true;
+		link.announced = false;
+
+		if (link.attachTo(target)) {
+			link.spend(duration * target.resist(LifeLink.class));
+			return link;
+		}
+
+		return null;
 	}
 
 	@Override
@@ -57,26 +77,30 @@ public class LifeLink extends FlavourBuff {
 	public void storeInBundle( Bundle bundle ) {
 		super.storeInBundle( bundle );
 		bundle.put( OBJECT, object );
+		bundle.put( YANDERE_GUARD_LINK, yandereGuardLink );
 	}
 
 	@Override
 	public void restoreFromBundle( Bundle bundle ) {
 		super.restoreFromBundle( bundle );
 		object = bundle.getInt( OBJECT );
+		yandereGuardLink = bundle.getBoolean( YANDERE_GUARD_LINK );
+		if (yandereGuardLink) announced = false;
 	}
 
 	@Override
 	public int icon() {
-		return BuffIndicator.HERB_HEALING;
+		return yandereGuardLink ? BuffIndicator.NONE : BuffIndicator.HERB_HEALING;
 	}
 
 	@Override
 	public void tintIcon(Image icon) {
-		icon.hardlight(1, 0, 1);
+		if (!yandereGuardLink) icon.hardlight(1, 0, 1);
 	}
 
 	@Override
 	public float iconFadePercent() {
+		if (yandereGuardLink) return 0f;
 		int duration = Math.round(6.67f + 3.33f*Dungeon.hero.pointsInTalent(Talent.LIFE_LINK));
 		return Math.max(0, (duration - visualcooldown()) / duration);
 	}
