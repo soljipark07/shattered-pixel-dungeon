@@ -4,10 +4,8 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
-import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.LifeLink;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
-import com.shatteredpixel.shatteredpixeldungeon.ui.BuffIndicator;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.Random;
 
@@ -259,17 +257,27 @@ public class GrowthYandereAlly extends YandereAlly {
         return false;
     }
 
-    private void clearMyInterceptLinks() {
+    private boolean hasNormalLifeLink() {
+        if (Dungeon.hero == null) return false;
+        for (LifeLink link : Dungeon.hero.buffs(LifeLink.class)) {
+            if (!link.yandereGuardLink) return true;
+        }
+        return false;
+    }
+
+    public void clearMyInterceptLinks() {
         if (Dungeon.hero == null) return;
-        for (YandereInterceptLink link : Dungeon.hero.buffs(YandereInterceptLink.class)) {
-            if (link.object == id()) link.detach();
+        for (LifeLink link : Dungeon.hero.buffs(LifeLink.class).toArray(new LifeLink[0])) {
+            if (link.yandereGuardLink && link.object == id()) {
+                link.detach();
+            }
         }
     }
 
     private void updateInterceptLinks() {
         if (Dungeon.hero == null) return;
 
-        if (!canPrepareIntercept()) {
+        if (!canPrepareIntercept() || hasNormalLifeLink()) {
             clearMyInterceptLinks();
             lastInterceptRollTurn = Integer.MIN_VALUE;
             return;
@@ -290,7 +298,7 @@ public class GrowthYandereAlly extends YandereAlly {
         // 세 개 = 영웅 1/4, 얀데레 3/4 부담이라 II의 75% 대신 맞기를 구현한다.
         int links = stage >= 2 ? 3 : 1;
         for (int i = 0; i < links; i++) {
-            Buff.append(Dungeon.hero, YandereInterceptLink.class, 1.25f).object = id();
+            LifeLink.attachYandereGuardLink(Dungeon.hero, id(), 1.25f);
         }
     }
 
@@ -312,13 +320,29 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     @Override
+    public void setMode(int newMode) {
+        super.setMode(newMode);
+        if (newMode == MODE_PEACE && !emergencyProtect()) {
+            clearMyInterceptLinks();
+        }
+    }
+
+    @Override
     public void damage(int dmg, Object src) {
-        boolean intercepted = src instanceof YandereInterceptLink;
+        boolean intercepted = src instanceof LifeLink
+                && ((LifeLink)src).yandereGuardLink
+                && ((LifeLink)src).object == id();
         super.damage(dmg, src);
 
         // 대신 맞기는 한 번의 피해 사건을 막고 소모된다.
         // II의 3개 링크는 Char.damage()가 이미 복사한 링크 목록을 순회하므로 같은 타격의 75%는 끝까지 전달된다.
         if (intercepted) clearMyInterceptLinks();
+    }
+
+    @Override
+    public void die(Object cause) {
+        clearMyInterceptLinks();
+        super.die(cause);
     }
 
     @Override
@@ -424,21 +448,6 @@ public class GrowthYandereAlly extends YandereAlly {
         if (interceptStage() >= 2) return 2;
         if (interceptStage() == 1) return 1;
         return 0;
-    }
-
-    /**
-     * 성장형 대신 맞기 전용의 짧은 LifeLink.
-     * 일반 성직자 LifeLink와 구분해서 제거할 수 있게 별도 클래스로 둔다.
-     */
-    public static class YandereInterceptLink extends LifeLink {
-        {
-            announced = false;
-        }
-
-        @Override
-        public int icon() {
-            return BuffIndicator.NONE;
-        }
     }
 
     private static final String GROWTH_HEARTS = "lab3_growth_yandere_hearts";
