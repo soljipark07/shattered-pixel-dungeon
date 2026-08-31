@@ -160,6 +160,17 @@ public class YandereAlly extends DirectableAlly {
         return super.attackDelay() * 0.65f;
     }
 
+    @Override
+    public void onMotionComplete() {
+        super.onMotionComplete();
+
+        // The run animation loops, so explicitly return to idle after the
+        // final step when the ally stops beside the hero.
+        if (sprite != null && isAlive()) {
+            sprite.idle();
+        }
+    }
+
     public int statAttackMin() { return hostileToHero ? Math.max(9999, Dungeon.hero == null ? 9999 : Dungeon.hero.HT * 4) : 180; }
     public int statAttackMax() { return hostileToHero ? statAttackMin() : 320; }
     public int statDrMin() { return 350; }
@@ -854,6 +865,10 @@ public class YandereAlly extends DirectableAlly {
             clearDefensingPos();
             state = WANDERING;
             attacksAutomatically = mode != MODE_PEACE;
+        }
+
+        if (sprite instanceof YandereSprite) {
+            ((YandereSprite)sprite).playHeartReaction();
         }
 
         snapshotFloorTransfer(globalClock(), 0f, 0);
