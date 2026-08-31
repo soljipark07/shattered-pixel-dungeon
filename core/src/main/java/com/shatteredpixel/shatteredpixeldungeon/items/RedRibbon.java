@@ -4,6 +4,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.GrowthYandereAlly;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereAlly;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
@@ -39,6 +40,8 @@ public class RedRibbon extends Item {
     private int savedEffectiveHearts = 0;
     private int savedTotalHearts = 0;
     private boolean savedHostile = false;
+    // 성장형만 층 이동 때 현재 HP를 이어받는다. -1은 첫 소환/기존 완전회복 동작.
+    private int savedGrowthHP = -1;
 
     {
         image = ItemSpriteSheet.RED_RIBBON;
@@ -181,10 +184,12 @@ public class RedRibbon extends Item {
                 if (index == 0) {
                     profile = PROFILE_CHEAT;
                     growthHearts = 0;
+                    savedGrowthHP = -1;
                     GLog.i("얀데레 유형을 치트형으로 선택했어.");
                 } else if (index == 1) {
                     profile = PROFILE_GROWTH;
                     growthHearts = 0;
+                    savedGrowthHP = -1;
                     GLog.i("얀데레 유형을 성장형으로 선택했어. 첫 소환 뒤에는 바꿀 수 없어.");
                 }
                 Item.updateQuickslot();
@@ -278,7 +283,14 @@ public class RedRibbon extends Item {
     private void createOnCurrentFloor(Hero hero, boolean manual) {
         if (Dungeon.level == null || hero == null || findAlly() != null) return;
 
-        YandereAlly ally = new YandereAlly();
+        YandereAlly ally;
+        if (isGrowthProfile()) {
+            GrowthYandereAlly growthAlly = new GrowthYandereAlly();
+            growthAlly.configureGrowth(growthHearts, savedGrowthHP);
+            ally = growthAlly;
+        } else {
+            ally = new YandereAlly();
+        }
         ally.applyPersistentState(savedMode, savedRage, savedEffectiveHearts, savedTotalHearts, savedHostile);
 
         int cell;
@@ -322,6 +334,7 @@ public class RedRibbon extends Item {
         savedEffectiveHearts = ally.effectiveHearts();
         savedTotalHearts = ally.totalHearts();
         savedHostile = ally.hostileToHero();
+        savedGrowthHP = ally instanceof GrowthYandereAlly ? ally.HP : -1;
         allyID = ally.id();
         summoned = true;
         profileLocked = true;
@@ -362,6 +375,8 @@ public class RedRibbon extends Item {
         ribbon.allyID = 0;
         ribbon.savedHostile = false;
         ribbon.savedRage = 0;
+        // 하트 2개 부활 규칙은 후반 단계에서 넣는다. 지금은 기존 재소환 동작을 유지한다.
+        ribbon.savedGrowthHP = -1;
         ribbon.profileLocked = true;
         if (ally != null) {
             ribbon.savedMode = ally.mode();
@@ -399,6 +414,10 @@ public class RedRibbon extends Item {
                 + "\n방어 스킬: " + ally.statDefenseSkill()
                 + "\n이동속도: x" + String.format("%.2f", ally.statMoveSpeed())
                 + "\n공격속도: x" + String.format("%.2f", ally.statAttackSpeed())
+                + (ally instanceof GrowthYandereAlly
+                    ? "\n자연회복: " + Math.round(((GrowthYandereAlly)ally).statRegenInterval())
+                        + "턴마다 최대 HP의 "
+                        + Math.round(((GrowthYandereAlly)ally).statRegenPercent() * 100) + "%" : "")
                 + "\n처치 수(대략): " + ally.kills()
                 + "\n현재 표적: " + ally.currentTargetName()
                 + "\n\n마지막 하트급 애정표현: " + ally.turnsSinceAffection() + "턴 전"
@@ -510,6 +529,7 @@ public class RedRibbon extends Item {
     private static final String SAVED_EFFECTIVE = "lab3_yandere_saved_effective_hearts";
     private static final String SAVED_TOTAL = "lab3_yandere_saved_total_hearts";
     private static final String SAVED_HOSTILE = "lab3_yandere_saved_hostile";
+    private static final String SAVED_GROWTH_HP = "lab3_yandere_saved_growth_hp";
 
     @Override
     public void storeInBundle(Bundle bundle) {
@@ -527,6 +547,7 @@ public class RedRibbon extends Item {
         bundle.put(SAVED_EFFECTIVE, savedEffectiveHearts);
         bundle.put(SAVED_TOTAL, savedTotalHearts);
         bundle.put(SAVED_HOSTILE, savedHostile);
+        bundle.put(SAVED_GROWTH_HP, savedGrowthHP);
     }
 
     @Override
@@ -543,6 +564,7 @@ public class RedRibbon extends Item {
         if (bundle.contains(SAVED_EFFECTIVE)) savedEffectiveHearts = bundle.getInt(SAVED_EFFECTIVE);
         if (bundle.contains(SAVED_TOTAL)) savedTotalHearts = bundle.getInt(SAVED_TOTAL);
         if (bundle.contains(SAVED_HOSTILE)) savedHostile = bundle.getBoolean(SAVED_HOSTILE);
+        if (bundle.contains(SAVED_GROWTH_HP)) savedGrowthHP = bundle.getInt(SAVED_GROWTH_HP);
 
         if (bundle.contains(PROFILE_LOCKED)) {
             profileLocked = bundle.getBoolean(PROFILE_LOCKED);
@@ -551,6 +573,7 @@ public class RedRibbon extends Item {
             profile = PROFILE_CHEAT;
             profileLocked = summoned || savedTotalHearts > 0;
             growthHearts = 0;
+            savedGrowthHP = -1;
         }
     }
 }
