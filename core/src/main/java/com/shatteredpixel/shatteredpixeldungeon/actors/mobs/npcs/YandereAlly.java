@@ -761,6 +761,10 @@ public class YandereAlly extends DirectableAlly {
             attacksAutomatically = mode != MODE_PEACE;
         }
 
+        if (sprite instanceof YandereSprite) {
+            ((YandereSprite)sprite).playHeartReaction();
+        }
+
         if (wasHostile) {
             switch (Random.Int(4)) {
                 case 0:
