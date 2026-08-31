@@ -44,9 +44,16 @@ public class GrowthYandereAlly extends YandereAlly {
     public static final int HEART_INTERCEPT_II = 39;
     public static final int HEART_COMBAT_TELEPORT = 42;
     public static final int HEART_SECRET_III = 45;
+    public static final int HEART_FINAL_AWAKENING = 48;
 
     private static final int SECRET_NEARBY_RANGE = 2;
     private static final int COMBAT_TELEPORT_RANGE = 4;
+
+    private static final float FINAL_HP_MULTIPLIER = 1.50f;
+    private static final float FINAL_ATTACK_MULTIPLIER = 1.50f;
+    private static final float FINAL_DR_MULTIPLIER = 1.50f;
+    private static final float FINAL_ACCURACY_MULTIPLIER = 1.30f;
+    private static final float FINAL_DEFENSE_MULTIPLIER = 1.30f;
 
     private int growthHearts = 0;
     private float lastRegenClock = -1f;
@@ -68,6 +75,10 @@ public class GrowthYandereAlly extends YandereAlly {
 
     @Override
     public String description() {
+        if (isFullyAwakened()) {
+            return "48개의 성장 하트를 전부 받아 완전히 각성했다. 「사랑해사랑해사랑해」 상태에서는 "
+                    + "체력과 전투 능력이 크게 상승하고 광란도가 더 이상 오르지 않으며, 주인공을 적대하는 광란 추격도 발생하지 않는다.";
+        }
         if (hostileToHero()) {
             return "애정 결핍으로 이성이 끊어졌다. 성장형이어도 광란 추격 중 접촉 공격은 거의 즉사급이다. "
                     + "도망치면서 하트를 찾아 던지면 다시 진정시킬 수 있다.";
@@ -78,6 +89,7 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     public int growthHearts() { return growthHearts; }
+    public boolean isFullyAwakened() { return growthHearts >= HEART_FINAL_AWAKENING; }
 
     public void configureGrowth(int hearts, int savedHP) {
         growthHearts = clampHearts(hearts);
@@ -93,22 +105,58 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     public void syncGrowthHearts(int hearts) {
+        boolean wasFullyAwakened = isFullyAwakened();
         int oldHT = HT;
         growthHearts = clampHearts(hearts);
         HT = growthMaxHP();
         defenseSkill = growthDefenseSkill();
         if (HT > oldHT) HP = Math.min(HT, HP + (HT - oldHT));
         else HP = Math.min(HP, HT);
+
+        if (isFullyAwakened()) {
+            normalizeFinalAwakeningState();
+            if (!wasFullyAwakened) {
+                yell("사랑해사랑해사랑해♡ 이제 됐어. 이제 아무것도 부족하지 않아.");
+            }
+        }
     }
 
     private int clampHearts(int value) { return Math.max(0, Math.min(MAX_GROWTH_HEARTS, value)); }
-    private int growthMaxHP() { return BASE_HP + HP_PER_HEART * growthHearts; }
-    private int growthAttackMin() { return BASE_ATTACK_MIN + (growthHearts + 1) / 2; }
-    private int growthAttackMax() { return BASE_ATTACK_MAX + growthHearts; }
-    private int growthDrMin() { return growthHearts / 6; }
-    private int growthDrMax() { return 2 + growthHearts / 3; }
-    private int growthAccuracy() { return BASE_ACCURACY + 3 * (growthHearts / 6); }
-    private int growthDefenseSkill() { return BASE_DEFENSE + 3 * (growthHearts / 6); }
+
+    private int growthMaxHP() {
+        int base = BASE_HP + HP_PER_HEART * growthHearts;
+        return isFullyAwakened() ? Math.round(base * FINAL_HP_MULTIPLIER) : base;
+    }
+
+    private int growthAttackMin() {
+        int base = BASE_ATTACK_MIN + (growthHearts + 1) / 2;
+        return isFullyAwakened() ? Math.round(base * FINAL_ATTACK_MULTIPLIER) : base;
+    }
+
+    private int growthAttackMax() {
+        int base = BASE_ATTACK_MAX + growthHearts;
+        return isFullyAwakened() ? Math.round(base * FINAL_ATTACK_MULTIPLIER) : base;
+    }
+
+    private int growthDrMin() {
+        int base = growthHearts / 6;
+        return isFullyAwakened() ? Math.round(base * FINAL_DR_MULTIPLIER) : base;
+    }
+
+    private int growthDrMax() {
+        int base = 2 + growthHearts / 3;
+        return isFullyAwakened() ? Math.round(base * FINAL_DR_MULTIPLIER) : base;
+    }
+
+    private int growthAccuracy() {
+        int base = BASE_ACCURACY + 3 * (growthHearts / 6);
+        return isFullyAwakened() ? Math.round(base * FINAL_ACCURACY_MULTIPLIER) : base;
+    }
+
+    private int growthDefenseSkill() {
+        int base = BASE_DEFENSE + 3 * (growthHearts / 6);
+        return isFullyAwakened() ? Math.round(base * FINAL_DEFENSE_MULTIPLIER) : base;
+    }
 
     public int guardRange() {
         if (growthHearts >= HEART_GUARD_II) return 5;
@@ -145,6 +193,50 @@ public class GrowthYandereAlly extends YandereAlly {
     public boolean hasEmergencyRecall() { return growthHearts >= HEART_EMERGENCY_RECALL; }
     public boolean hasSmartDodge() { return growthHearts >= HEART_SMART_DODGE; }
     public boolean hasCombatTeleport() { return growthHearts >= HEART_COMBAT_TELEPORT; }
+
+    private void normalizeFinalAwakeningState() {
+        if (!isFullyAwakened()) return;
+        super.debugSetRage(0);
+        if (enemy == Dungeon.hero) clearEnemy();
+        clearDefensingPos();
+        if (state == HUNTING && enemy == null) state = WANDERING;
+        attacksAutomatically = emergencyProtect() || mode() != MODE_PEACE;
+    }
+
+    @Override
+    public int rage() {
+        return isFullyAwakened() ? 0 : super.rage();
+    }
+
+    @Override
+    public void addRage(int amount) {
+        if (isFullyAwakened()) return;
+        super.addRage(amount);
+    }
+
+    @Override
+    public String emotionName() {
+        return isFullyAwakened() ? "완전한 확신" : super.emotionName();
+    }
+
+    @Override
+    public void debugSetRage(int value) {
+        if (isFullyAwakened()) {
+            normalizeFinalAwakeningState();
+            return;
+        }
+        super.debugSetRage(value);
+    }
+
+    @Override
+    public void applyPersistentState(int savedMode, int savedRage, int savedEffectiveHearts, int savedTotalHearts, boolean savedHostile) {
+        if (isFullyAwakened()) {
+            super.applyPersistentState(savedMode, 0, savedEffectiveHearts, savedTotalHearts, false);
+            normalizeFinalAwakeningState();
+        } else {
+            super.applyPersistentState(savedMode, savedRage, savedEffectiveHearts, savedTotalHearts, savedHostile);
+        }
+    }
 
     private float lowHpCombatMultiplier() {
         if (Dungeon.hero == null || lowHpAwakeningStage() == 0) return 1f;
@@ -492,5 +584,6 @@ public class GrowthYandereAlly extends YandereAlly {
         lastRoomSignature = Integer.MIN_VALUE;
         warnedNearbySecretDoors.clear();
         warnedSecretRooms.clear();
+        if (isFullyAwakened()) normalizeFinalAwakeningState();
     }
 }
