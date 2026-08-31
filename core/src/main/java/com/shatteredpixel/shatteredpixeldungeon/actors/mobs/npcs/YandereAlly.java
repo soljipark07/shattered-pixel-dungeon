@@ -23,42 +23,27 @@ public class YandereAlly extends DirectableAlly {
     public static final int MODE_GUARD   = 1;
     public static final int MODE_PEACE   = 2;
 
-    // ==========================================================
-    // LAB3-y02 BALANCE BLOCK
-    // 한 층에 한 번쯤 신경쓰게 만드는 방향의 첫 테스트값.
-    // 여기 숫자만 바꾸면 다음 밸런스 조정이 쉬움.
-    // ==========================================================
     public static final float AFFECTION_GRACE = 60f;
     public static final float RAGE_INTERVAL = 5f;
     public static final int TALK_REDUCTION = 5;
     public static final float TALK_COOLDOWN = 250f;
     public static final float TALK_TIME_CREDIT = 60f;
-
     public static final float LIMIT_SAFE_TIME = 12f;
     public static final float SNAP_CHANCE_PER_ACT = 0.04f;
-
     public static final float CHATTER_MIN = 35f;
     public static final float CHATTER_MAX = 70f;
-
     public static final float EMERGENCY_HP = 0.25f;
     public static final float EMERGENCY_RELEASE_HP = 0.40f;
-
     public static final int HERO_HIT_RAGE = 15;
     public static final int EFFECTIVE_HEART_MIN_RAGE = 20;
-    // ==========================================================
 
     private int mode = MODE_GUARD;
     private int modeBeforeHostile = MODE_GUARD;
-
-    // 하트를 받으면 rageBase=0 + affectionClock=현재 시각.
     private int rageBase = 0;
     private float affectionClock = -1f;
     private float lastTalkClock = -999999f;
     private float bossRagePauseClock = -1f;
 
-    // RedRibbon은 층 이동 때 얀데레 본체를 새로 만든다.
-    // 그래서 리본이 savedRage만 넘겨도 마지막 하트 타이머가 리셋되지 않도록
-    // 직전 본체의 정확한 시간 기반 상태를 짧게 보관한다.
     private static final float FLOOR_TRANSFER_WINDOW = 200f;
     private static float transferSnapshotClock = -1f;
     private static float transferAffectionAge = 0f;
@@ -73,20 +58,16 @@ public class YandereAlly extends DirectableAlly {
 
     private int warnedStage = 0;
     private float limitReachedClock = -1f;
-
     private int revengeTargetID = -1;
     private boolean emergencyProtect = false;
     private boolean hostileToHero = false;
-
     private int effectiveHearts = 0;
     private int totalHearts = 0;
     private int kills = 0;
-
     private float nextChatterClock = -1f;
     private float lastPainDialogueClock = -999999f;
     private int heroHpStage = 0;
     private int pendingArrivalDialogue = 0;
-
     private int lastDepth = -999;
     private int lastBranch = -999;
     private float floorEnterClock = -1f;
@@ -94,14 +75,11 @@ public class YandereAlly extends DirectableAlly {
     {
         spriteClass = YandereSprite.class;
         flying = false;
-
         HP = HT = 9999;
         defenseSkill = 1000;
         viewDistance = 24;
-
         EXP = 0;
         maxLvl = -5;
-
         intelligentAlly = false;
         attacksAutomatically = true;
         state = WANDERING;
@@ -128,49 +106,28 @@ public class YandereAlly extends DirectableAlly {
                 + "주인공이 심하게 다치면 어떤 명령을 내렸든 무시하고 즉시 돌아온다.";
     }
 
-    // ---------- combat stats ----------
-
     @Override
-    public int attackSkill(Char target) {
-        return 1_000_000;
-    }
+    public int attackSkill(Char target) { return 1_000_000; }
 
     @Override
     public int damageRoll() {
-        if (hostileToHero && Dungeon.hero != null) {
-            // 추격전은 접촉 자체가 공포가 되도록 원킬급.
-            return Math.max(9999, Dungeon.hero.HT * 4);
-        }
+        if (hostileToHero && Dungeon.hero != null) return Math.max(9999, Dungeon.hero.HT * 4);
         return Random.NormalIntRange(180, 320);
     }
 
     @Override
-    public int drRoll() {
-        return Random.NormalIntRange(350, 550);
-    }
+    public int drRoll() { return Random.NormalIntRange(350, 550); }
 
     @Override
-    public float speed() {
-        // 광란 추격전만 정확히 1배속.
-        if (hostileToHero) return 1f;
-        return super.speed() * 1.5f;
-    }
+    public float speed() { return hostileToHero ? 1f : super.speed() * 1.5f; }
 
     @Override
-    public float attackDelay() {
-        if (hostileToHero) return 1f;
-        return super.attackDelay() * 0.65f;
-    }
+    public float attackDelay() { return hostileToHero ? 1f : super.attackDelay() * 0.65f; }
 
     @Override
     public void onMotionComplete() {
         super.onMotionComplete();
-
-        // The run animation loops, so explicitly return to idle after the
-        // final step when the ally stops beside the hero.
-        if (sprite != null && isAlive()) {
-            sprite.idle();
-        }
+        if (sprite != null && isAlive()) sprite.idle();
     }
 
     public int statAttackMin() { return hostileToHero ? Math.max(9999, Dungeon.hero == null ? 9999 : Dungeon.hero.HT * 4) : 180; }
@@ -187,21 +144,12 @@ public class YandereAlly extends DirectableAlly {
     public int attackProc(Char enemy, int damage) {
         boolean wasAlive = enemy != null && enemy.isAlive();
         int result = super.attackProc(enemy, damage);
-        // 실제 사망은 attackProc 이후 처리되므로 다음 act에서도 정리되지만,
-        // 치트 아군이 얼마나 일했는지 대략 보기 위한 카운터.
-        if (wasAlive && enemy != null && enemy.HP - result <= 0 && enemy != Dungeon.hero) {
-            kills++;
-        }
+        if (wasAlive && enemy != null && enemy.HP - result <= 0 && enemy != Dungeon.hero) kills++;
         return result;
     }
 
-    // ---------- hero accidentally attacks her ----------
-
     private boolean heroCaused(Object src) {
-        return src == Dungeon.hero
-                || src instanceof Wand
-                || src instanceof ClericSpell
-                || src instanceof ArmorAbility;
+        return src == Dungeon.hero || src instanceof Wand || src instanceof ClericSpell || src instanceof ArmorAbility;
     }
 
     @Override
@@ -209,18 +157,11 @@ public class YandereAlly extends DirectableAlly {
         if (!hostileToHero && heroCaused(src)) {
             addRage(HERO_HIT_RAGE);
             int pick = Random.Int(5);
-            if (pick == 0) {
-                yell("왜 나 때렸어? 나 뭐 잘못했어? 말해줘. 고칠게.");
-            } else if (pick == 1) {
-                yell("장난이지? 장난이라고 해줘♡ 그러면 나 진짜 안 화낼게.");
-            } else if (pick == 2) {
-                yell("아파. 근데 네가 때린 거라 더 아파. 왜 그랬어?");
-            } else if (pick == 3) {
-                yell("나 싫어진 거 아니지? 아니라고 해줘. 지금 당장.");
-            } else {
-                yell("또 때리면 나 진짜 이상해질 것 같아. 그러니까 그러지 마.");
-            }
-            // 실수 한 방에 치트 아군이 사라지는 건 막음.
+            if (pick == 0) yell("왜 나 때렸어? 나 뭐 잘못했어? 말해줘. 고칠게.");
+            else if (pick == 1) yell("장난이지? 장난이라고 해줘♡ 그러면 나 진짜 안 화낼게.");
+            else if (pick == 2) yell("아파. 근데 네가 때린 거라 더 아파. 왜 그랬어?");
+            else if (pick == 3) yell("나 싫어진 거 아니지? 아니라고 해줘. 지금 당장.");
+            else yell("또 때리면 나 진짜 이상해질 것 같아. 그러니까 그러지 마.");
             return;
         }
         super.damage(dmg, src);
@@ -232,8 +173,6 @@ public class YandereAlly extends DirectableAlly {
         super.die(cause);
     }
 
-    // ---------- main AI ----------
-
     @Override
     protected boolean act() {
         ensureClocks();
@@ -242,17 +181,11 @@ public class YandereAlly extends DirectableAlly {
         if (pendingArrivalDialogue != 0) {
             int kind = pendingArrivalDialogue;
             pendingArrivalDialogue = 0;
-
-            if (kind == 2) {
-                yell("계단으로 도망가면 끝날 줄 알았어? 나도 따라왔어. 이번엔 어디까지 갈 건데?");
-            } else {
-                yell("나도 왔어♡ 설마 층 바뀌었다고 나 두고 갈 줄 알았어?");
-            }
+            if (kind == 2) yell("계단으로 도망가면 끝날 줄 알았어? 나도 따라왔어. 이번엔 어디까지 갈 건데?");
+            else yell("나도 왔어♡ 설마 층 바뀌었다고 나 두고 갈 줄 알았어?");
         }
 
-        if (!hostileToHero && HP < HT) {
-            HP = Math.min(HT, HP + 100);
-        }
+        if (!hostileToHero && HP < HT) HP = Math.min(HT, HP + 100);
 
         if (!hostileToHero && emergencyProtect && Dungeon.hero != null
                 && Dungeon.hero.HP / (float)Math.max(1, Dungeon.hero.HT) > EMERGENCY_RELEASE_HP) {
@@ -281,17 +214,9 @@ public class YandereAlly extends DirectableAlly {
             }
         } else if (emergencyProtect) {
             alignment = Alignment.ALLY;
-            attacksAutomatically = true; // 공격 금지 명령도 무시
-
-            // 긴급 보호에서는 먼저 실제 보호 대상을 확정한다.
-            // 복수대상이 없는데 주변 적이 있는 경우 WANDERING으로 되돌렸다가
-            // 부모 AI가 다시 HUNTING으로 바꾸는 0턴 루프가 생길 수 있으므로,
-            // 주변 위협도 여기서 바로 targetChar()로 고정한다.
+            attacksAutomatically = true;
             Char protectTarget = revengeTarget();
-            if (protectTarget == null) {
-                protectTarget = nearestEnemyNearHero(3);
-            }
-
+            if (protectTarget == null) protectTarget = nearestEnemyNearHero(3);
             if (protectTarget != null) {
                 clearDefensingPos();
                 targetChar(protectTarget);
@@ -310,9 +235,6 @@ public class YandereAlly extends DirectableAlly {
         } else {
             alignment = Alignment.ALLY;
             attacksAutomatically = true;
-
-            // 광폭은 층 전체의 '도달 가능한' 적을 적극적으로 추적한다.
-            // 적이 없거나 현재 지형상 도달할 수 없으면 멈춰 있지 않고 순찰한다.
             if (mode == MODE_RAMPAGE && revengeTarget() == null) {
                 Char hunt = nearestEnemyAnywhere();
                 if (hunt != null) {
@@ -324,48 +246,34 @@ public class YandereAlly extends DirectableAlly {
                 }
             }
         }
-
         return super.act();
     }
 
     @Override
     protected Char chooseEnemy() {
-        if (hostileToHero) {
-            return Dungeon.hero != null && Dungeon.hero.isAlive() ? Dungeon.hero : null;
-        }
-
+        if (hostileToHero) return Dungeon.hero != null && Dungeon.hero.isAlive() ? Dungeon.hero : null;
         if (emergencyProtect) {
             Char revenge = revengeTarget();
             if (revenge != null) return revenge;
             return nearestEnemyNearHero(3);
         }
-
         if (mode == MODE_PEACE) return null;
-
         Char revenge = revengeTarget();
         if (revenge != null) return revenge;
-
-        if (mode == MODE_GUARD) {
-            return nearestEnemyNearHero(2);
-        }
-
+        if (mode == MODE_GUARD) return nearestEnemyNearHero(2);
         if (mode == MODE_RAMPAGE) {
             Char all = nearestEnemyAnywhere();
             if (all != null) return all;
         }
-
         return super.chooseEnemy();
     }
 
     private Char nearestEnemyNearHero(int range) {
         if (Dungeon.level == null || Dungeon.hero == null) return null;
-
         Mob best = null;
         int bestDist = Integer.MAX_VALUE;
-
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (!validEnemy(mob)) continue;
-
             int heroDist = Dungeon.level.distance(Dungeon.hero.pos, mob.pos);
             if (heroDist <= range) {
                 int myDist = Dungeon.level.distance(pos, mob.pos);
@@ -380,20 +288,13 @@ public class YandereAlly extends DirectableAlly {
 
     private Char nearestEnemyAnywhere() {
         if (Dungeon.level == null) return null;
-
-        // 단순 직선거리가 아니라 실제 걸어서 갈 수 있는 적만 고른다.
-        // 이 검사가 없으면 막힌 적을 계속 재지정하면서 매 턴 '?'만 띄울 수 있다.
         PathFinder.buildDistanceMap(pos, Dungeon.level.passable);
-
         Mob best = null;
         int bestDist = Integer.MAX_VALUE;
-
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (!validEnemy(mob)) continue;
-
             int d = PathFinder.distance[mob.pos];
             if (d == Integer.MAX_VALUE) continue;
-
             if (best == null || d < bestDist) {
                 best = mob;
                 bestDist = d;
@@ -404,55 +305,35 @@ public class YandereAlly extends DirectableAlly {
 
     private void ensureRampagePatrol() {
         if (Dungeon.level == null) return;
-
-        // 이미 순찰 목적지로 걸어가는 중이면 계속 간다.
         if (movingToDefendPos && defendingPos != -1 && pos != defendingPos) {
             state = WANDERING;
             return;
         }
-
-        // 현재 위치에서 실제로 도달 가능한 칸 중 멀리 떨어진 후보를 뽑는다.
-        // 도착할 때마다 새 목적지를 골라 광폭 상태에서는 계속 맵을 돌아다닌다.
         PathFinder.buildDistanceMap(pos, Dungeon.level.passable);
-
         int best = -1;
         int bestDist = 0;
-
         for (int i = 0; i < 48; i++) {
             int cell = Random.Int(Dungeon.level.length());
             if (cell == pos || Actor.findChar(cell) != null) continue;
-
             int d = PathFinder.distance[cell];
             if (d == Integer.MAX_VALUE || d <= 0) continue;
-
             if (d > bestDist) {
                 best = cell;
                 bestDist = d;
             }
         }
-
-        if (best != -1) {
-            defendPos(best);
-        } else {
-            // 극단적으로 이동 가능한 칸이 없는 방에서도 HUNTING에 남아 '?'를 반복하지 않는다.
+        if (best != -1) defendPos(best);
+        else {
             clearDefensingPos();
             state = WANDERING;
         }
     }
 
     private boolean validEnemy(Mob mob) {
-        return mob != null
-                && mob != this
-                && mob.isAlive()
-                && mob.alignment == Alignment.ENEMY
-                && !mob.isInvulnerable(getClass());
+        return mob != null && mob != this && mob.isAlive() && mob.alignment == Alignment.ENEMY && !mob.isInvulnerable(getClass());
     }
 
-    public void queueFloorArrivalDialogue(boolean hostileArrival) {
-        pendingArrivalDialogue = hostileArrival ? 2 : 1;
-    }
-
-    // ---------- commands ----------
+    public void queueFloorArrivalDialogue(boolean hostileArrival) { pendingArrivalDialogue = hostileArrival ? 2 : 1; }
 
     public void setMode(int newMode) {
         if (hostileToHero) {
@@ -460,18 +341,15 @@ public class YandereAlly extends DirectableAlly {
             return;
         }
         if (newMode < MODE_RAMPAGE || newMode > MODE_PEACE) return;
-
         mode = newMode;
         revengeTargetID = -1;
         clearEnemy();
         clearDefensingPos();
         state = WANDERING;
-
         if (emergencyProtect) {
             yell("지금은 명령 안 들을 거야. 네가 이 꼴인데 내가 어떻게 가만히 있어?");
             return;
         }
-
         if (mode == MODE_PEACE) {
             attacksAutomatically = false;
             yell("알겠어♡ 아무도 안 건드릴게. 네가 하지 말랬으니까 진짜 꾹 참을게.");
@@ -497,167 +375,101 @@ public class YandereAlly extends DirectableAlly {
         }
     }
 
-    // ---------- hero damage reaction ----------
-
     public static void onHeroDamaged(int effectiveDamage, int preHP, int postHP, Object src) {
         if (Dungeon.level == null || Dungeon.hero == null || effectiveDamage <= 0) return;
-
         Char attacker = src instanceof Char ? (Char)src : null;
-        if (attacker != null
-                && (attacker == Dungeon.hero || attacker.alignment != Alignment.ENEMY || !attacker.isAlive())) {
-            attacker = null;
-        }
-
+        if (attacker != null && (attacker == Dungeon.hero || attacker.alignment != Alignment.ENEMY || !attacker.isAlive())) attacker = null;
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
-            if (mob instanceof YandereAlly) {
-                ((YandereAlly)mob).reactToHeroDamage(effectiveDamage, preHP, postHP, attacker);
-            }
+            if (mob instanceof YandereAlly) ((YandereAlly)mob).reactToHeroDamage(effectiveDamage, preHP, postHP, attacker);
         }
     }
 
     private void reactToHeroDamage(int damage, int preHP, int postHP, Char attacker) {
         if (hostileToHero || Dungeon.hero == null) return;
-
         float hp = Math.max(0f, Dungeon.hero.HP / (float)Math.max(1, Dungeon.hero.HT));
         int newStage = hp <= 0.10f ? 4 : hp <= 0.25f ? 3 : hp <= 0.50f ? 2 : hp <= 0.75f ? 1 : 0;
         boolean severeHit = damage >= Math.max(5, Dungeon.hero.HT / 5);
         boolean crossed = newStage > heroHpStage;
-
         if (newStage < heroHpStage) heroHpStage = newStage;
-
         if (attacker != null) {
             revengeTargetID = attacker.id();
-            if (mode != MODE_PEACE || hp <= EMERGENCY_HP) {
-                targetChar(attacker);
-            }
+            if (mode != MODE_PEACE || hp <= EMERGENCY_HP) targetChar(attacker);
         }
-
-        // 25% 이하는 명령보다 보호 본능이 우선.
         if (hp <= EMERGENCY_HP) {
             emergencyProtect = true;
             attacksAutomatically = true;
             emergencyRecall();
         }
-
         float now = globalClock();
         if (crossed || severeHit || now - lastPainDialogueClock >= 14f) {
             lastPainDialogueClock = now;
             sayPainLine(newStage, attacker);
         }
-
         heroHpStage = Math.max(heroHpStage, newStage);
     }
 
     private void sayPainLine(int stage, Char attacker) {
         if (stage >= 4) {
             switch (Random.Int(5)) {
-                case 0:
-                    yell("안 돼 안 돼 안 돼! 너 죽으면 안 돼! 나 봐, 나 여기 있어!");
-                    break;
-                case 1:
-                    yell("누가 이랬어! 누구야! 저년을 내가 분질러버릴 거야, 분질러버릴 거야!");
-                    break;
-                case 2:
-                    yell("피가 왜 이렇게 빠졌어? 누가 했어? 말해! 내가 걔부터 갈아버릴게!");
-                    break;
-                case 3:
-                    yell("아프지 마! 제발 아프지 마! 너 건드린 건 내가 전부 없애버릴 테니까!");
-                    break;
-                default:
-                    yell("너 숨 쉬어. 계속 숨 쉬어! 나머지는 내가 할게, 내가 다 할게!");
-                    break;
+                case 0: yell("안 돼 안 돼 안 돼! 너 죽으면 안 돼! 나 봐, 나 여기 있어!"); break;
+                case 1: yell("누가 이랬어! 누구야! 저년을 내가 분질러버릴 거야, 분질러버릴 거야!"); break;
+                case 2: yell("피가 왜 이렇게 빠졌어? 누가 했어? 말해! 내가 걔부터 갈아버릴게!"); break;
+                case 3: yell("아프지 마! 제발 아프지 마! 너 건드린 건 내가 전부 없애버릴 테니까!"); break;
+                default: yell("너 숨 쉬어. 계속 숨 쉬어! 나머지는 내가 할게, 내가 다 할게!"); break;
             }
         } else if (stage >= 3) {
             switch (Random.Int(5)) {
-                case 0:
-                    yell("누가 너 이렇게 만들었어? 걔 어디 있어. 빨리 말해.");
-                    break;
-                case 1:
-                    yell("내가 옆에 있는데 왜 이렇게까지 다쳐! 화나, 진짜 너무 화나!");
-                    break;
-                case 2:
-                    yell("이리 와! 지금은 내 말 들어. 네가 뭐라고 해도 나 안 떨어질 거야.");
-                    break;
-                case 3:
-                    yell("쟤가 그랬어? 쟤 맞지? 좋아. 쟤부터 부숴버리면 되는 거지?");
-                    break;
-                default:
-                    yell("아프잖아! 왜 참아! 나한테 와, 내가 다 막아줄게!");
-                    break;
+                case 0: yell("누가 너 이렇게 만들었어? 걔 어디 있어. 빨리 말해."); break;
+                case 1: yell("내가 옆에 있는데 왜 이렇게까지 다쳐! 화나, 진짜 너무 화나!"); break;
+                case 2: yell("이리 와! 지금은 내 말 들어. 네가 뭐라고 해도 나 안 떨어질 거야."); break;
+                case 3: yell("쟤가 그랬어? 쟤 맞지? 좋아. 쟤부터 부숴버리면 되는 거지?"); break;
+                default: yell("아프잖아! 왜 참아! 나한테 와, 내가 다 막아줄게!"); break;
             }
         } else if (stage >= 2) {
             switch (Random.Int(4)) {
-                case 0:
-                    yell("많이 아파? 나한테 와♡ 내가 옆에 있을게.");
-                    break;
-                case 1:
-                    yell("또 다쳤어? 진짜 속상해. 너 때린 애는 내가 기억했어.");
-                    break;
-                case 2:
-                    yell("괜찮다고 하지 마. 안 괜찮아 보이니까 내가 더 붙어 있을 거야♡");
-                    break;
-                default:
-                    yell("내가 조금만 더 잘 지켰어야 했는데. 이제 안 놓칠게.");
-                    break;
+                case 0: yell("많이 아파? 나한테 와♡ 내가 옆에 있을게."); break;
+                case 1: yell("또 다쳤어? 진짜 속상해. 너 때린 애는 내가 기억했어."); break;
+                case 2: yell("괜찮다고 하지 마. 안 괜찮아 보이니까 내가 더 붙어 있을 거야♡"); break;
+                default: yell("내가 조금만 더 잘 지켰어야 했는데. 이제 안 놓칠게."); break;
             }
         } else {
             switch (Random.Int(4)) {
-                case 0:
-                    yell("아팠어? 이리 와♡ 내가 봐줄게.");
-                    break;
-                case 1:
-                    yell("누가 건드렸어? 내가 바로 처리하고 올게♡");
-                    break;
-                case 2:
-                    yell("조심해, 자기야♡ 너 다치면 나 진짜 싫어.");
-                    break;
-                default:
-                    yell("괜찮아? 나 여기 있어. 다음엔 내가 먼저 막을게♡");
-                    break;
+                case 0: yell("아팠어? 이리 와♡ 내가 봐줄게."); break;
+                case 1: yell("누가 건드렸어? 내가 바로 처리하고 올게♡"); break;
+                case 2: yell("조심해, 자기야♡ 너 다치면 나 진짜 싫어."); break;
+                default: yell("괜찮아? 나 여기 있어. 다음엔 내가 먼저 막을게♡"); break;
             }
         }
     }
 
     private void emergencyRecall() {
         if (Dungeon.hero == null || Dungeon.level == null) return;
+        if (this instanceof GrowthYandereAlly
+                && ((GrowthYandereAlly)this).growthHearts() < GrowthYandereAlly.HEART_EMERGENCY_RECALL) return;
         if (Dungeon.level.distance(pos, Dungeon.hero.pos) <= 1) return;
-
         int cell = adjacentTo(Dungeon.hero);
-        if (cell != -1) {
-            ScrollOfTeleportation.appear(this, cell);
-        }
+        if (cell != -1) ScrollOfTeleportation.appear(this, cell);
     }
 
     private int adjacentTo(Char ch) {
         if (ch == null || Dungeon.level == null) return -1;
-
         int[] dirs = PathFinder.NEIGHBOURS8.clone();
         Random.shuffle(dirs);
-
         for (int off : dirs) {
             int cell = ch.pos + off;
             if (cell < 0 || cell >= Dungeon.level.length()) continue;
-            if (Actor.findChar(cell) == null
-                    && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) {
-                return cell;
-            }
+            if (Actor.findChar(cell) == null && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) return cell;
         }
         return -1;
     }
 
     private Char revengeTarget() {
         if (revengeTargetID == -1) return null;
-
         Actor actor = Actor.findById(revengeTargetID);
         if (actor instanceof Char) {
             Char ch = (Char)actor;
-            if (ch.isAlive() && ch.isActive()
-                    && ch.alignment == Alignment.ENEMY
-                    && Actor.chars().contains(ch)) {
-                return ch;
-            }
+            if (ch.isAlive() && ch.isActive() && ch.alignment == Alignment.ENEMY && Actor.chars().contains(ch)) return ch;
         }
-
         revengeTargetID = -1;
         return null;
     }
@@ -670,30 +482,18 @@ public class YandereAlly extends DirectableAlly {
         return "없음";
     }
 
-    // ---------- affection / rage ----------
-
-    private static float globalClock() {
-        return Statistics.duration + Actor.now();
-    }
+    private static float globalClock() { return Statistics.duration + Actor.now(); }
 
     private float rageClockNow() {
         float now = globalClock();
-
-        // 보스 체력바가 실제 보스에게 할당된 동안에는 자연 광란도 시간만 멈춘다.
-        // 보스전이 끝나면 멈춰 있던 시간만큼 affectionClock을 앞으로 밀어
-        // 전투 시간이 종료 직후 한꺼번에 광란도로 환산되지 않게 한다.
         if (BossHealthBar.isAssigned()) {
-            if (bossRagePauseClock < 0f) {
-                bossRagePauseClock = now;
-            }
+            if (bossRagePauseClock < 0f) bossRagePauseClock = now;
             return bossRagePauseClock;
         }
-
         if (bossRagePauseClock >= 0f) {
             affectionClock += Math.max(0f, now - bossRagePauseClock);
             bossRagePauseClock = -1f;
         }
-
         return now;
     }
 
@@ -702,7 +502,6 @@ public class YandereAlly extends DirectableAlly {
         if (affectionClock < 0f) affectionClock = now;
         if (floorEnterClock < 0f) floorEnterClock = now;
         if (nextChatterClock < 0f) nextChatterClock = now + Random.Float(CHATTER_MIN, CHATTER_MAX);
-
         if (Dungeon.level != null) {
             if (lastDepth == -999) lastDepth = Dungeon.depth;
             if (lastBranch == -999) lastBranch = Dungeon.branch;
@@ -731,16 +530,11 @@ public class YandereAlly extends DirectableAlly {
         transferHostile = hostileToHero;
     }
 
-    private static boolean matchesFloorTransfer(int savedMode, int savedRage, int savedEffectiveHearts,
-                                                int savedTotalHearts, boolean savedHostile, float now) {
-        return transferSnapshotClock >= 0f
-                && now >= transferSnapshotClock
-                && now - transferSnapshotClock <= FLOOR_TRANSFER_WINDOW
-                && transferMode == savedMode
-                && transferCurrentRage == Math.max(0, Math.min(100, savedRage))
+    private static boolean matchesFloorTransfer(int savedMode, int savedRage, int savedEffectiveHearts, int savedTotalHearts, boolean savedHostile, float now) {
+        return transferSnapshotClock >= 0f && now >= transferSnapshotClock && now - transferSnapshotClock <= FLOOR_TRANSFER_WINDOW
+                && transferMode == savedMode && transferCurrentRage == Math.max(0, Math.min(100, savedRage))
                 && transferEffectiveHearts == Math.max(0, savedEffectiveHearts)
-                && transferTotalHearts == Math.max(transferEffectiveHearts, savedTotalHearts)
-                && transferHostile == savedHostile;
+                && transferTotalHearts == Math.max(transferEffectiveHearts, savedTotalHearts) && transferHostile == savedHostile;
     }
 
     private static void clearFloorTransferSnapshot() {
@@ -758,21 +552,13 @@ public class YandereAlly extends DirectableAlly {
 
     public int rage() {
         ensureClocks();
-
         float rageNow = rageClockNow();
         float elapsed = Math.max(0f, rageNow - affectionClock);
-
         if (hostileToHero) {
             snapshotFloorTransfer(globalClock(), elapsed, 100);
             return 100;
         }
-
-        int gained = 0;
-
-        if (elapsed > AFFECTION_GRACE) {
-            gained = (int)Math.floor((elapsed - AFFECTION_GRACE) / RAGE_INTERVAL);
-        }
-
+        int gained = elapsed > AFFECTION_GRACE ? (int)Math.floor((elapsed - AFFECTION_GRACE) / RAGE_INTERVAL) : 0;
         int current = Math.max(0, Math.min(100, rageBase + gained));
         snapshotFloorTransfer(globalClock(), elapsed, current);
         return current;
@@ -789,9 +575,7 @@ public class YandereAlly extends DirectableAlly {
         int r = rage();
         if (r >= 100) {
             if (limitReachedClock < 0f) limitReachedClock = globalClock();
-        } else {
-            limitReachedClock = -1f;
-        }
+        } else limitReachedClock = -1f;
         warnedStage = Math.min(warnedStage, stage(r));
     }
 
@@ -806,90 +590,45 @@ public class YandereAlly extends DirectableAlly {
         return "안정";
     }
 
-    public int turnsSinceAffection() {
-        ensureClocks();
-        return Math.max(0, Math.round(rageClockNow() - affectionClock));
-    }
-
-    public int floorTurns() {
-        ensureClocks();
-        detectFloorChange();
-        return Math.max(0, Math.round(globalClock() - floorEnterClock));
-    }
-
-    public int turnsUntilTalk() {
-        return Math.max(0, Math.round(TALK_COOLDOWN - (globalClock() - lastTalkClock)));
-    }
-
-    public int turnsAtLimit() {
-        if (limitReachedClock < 0f) return 0;
-        return Math.max(0, Math.round(globalClock() - limitReachedClock));
-    }
-
-    public boolean canTalk() {
-        return globalClock() - lastTalkClock >= TALK_COOLDOWN;
-    }
-
+    public int turnsSinceAffection() { ensureClocks(); return Math.max(0, Math.round(rageClockNow() - affectionClock)); }
+    public int floorTurns() { ensureClocks(); detectFloorChange(); return Math.max(0, Math.round(globalClock() - floorEnterClock)); }
+    public int turnsUntilTalk() { return Math.max(0, Math.round(TALK_COOLDOWN - (globalClock() - lastTalkClock))); }
+    public int turnsAtLimit() { return limitReachedClock < 0f ? 0 : Math.max(0, Math.round(globalClock() - limitReachedClock)); }
+    public boolean canTalk() { return globalClock() - lastTalkClock >= TALK_COOLDOWN; }
     public int effectiveHearts() { return effectiveHearts; }
     public int totalHearts() { return totalHearts; }
     public boolean hostileToHero() { return hostileToHero; }
     public boolean emergencyProtect() { return emergencyProtect; }
 
     public void talk() {
-        if (hostileToHero) {
-            yell("말로 끝내려고? 하트부터 줘. 지금은 그거 아니면 못 믿겠어.");
-            return;
-        }
-
-        if (!canTalk()) {
-            yell("또 말 걸어주는 거야? 헤헤, 좋아♡ 그래도 조금 있다가 또 얘기하자.");
-            return;
-        }
-
+        if (hostileToHero) { yell("말로 끝내려고? 하트부터 줘. 지금은 그거 아니면 못 믿겠어."); return; }
+        if (!canTalk()) { yell("또 말 걸어주는 거야? 헤헤, 좋아♡ 그래도 조금 있다가 또 얘기하자."); return; }
         int before = rage();
         rageBase = Math.max(0, before - TALK_REDUCTION);
-
-        // 대화는 작은 애정표현. 하트처럼 완전 초기화는 하지 않음.
         float now = globalClock();
         float rageNow = rageClockNow();
         affectionClock = Math.min(rageNow, affectionClock + TALK_TIME_CREDIT);
         lastTalkClock = now;
         warnedStage = stage(rage());
-
         switch (Random.Int(6)) {
-            case 0:
-                yell("나 불렀어? 응♡ 나 여기 있어. 계속 네 옆에 있을게.");
-                break;
-            case 1:
-                yell("먼저 말 걸어주는 거 너무 좋아♡ 한 번만 더 불러주면 안 돼?");
-                break;
-            case 2:
-                yell("오늘도 나 필요하지? 필요하다고 해줘♡ 나 그 말 진짜 좋아해.");
-                break;
-            case 3:
-                yell("헤헤♡ 네가 나 신경 써주는 순간이 제일 좋아.");
-                break;
-            case 4:
-                yell("나 보고 싶어서 부른 거지? 맞다고 해♡ 맞다고 해줘.");
-                break;
-            default:
-                yell("응응♡ 듣고 있어. 너 하는 말이면 하루 종일 들어도 좋아.");
-                break;
+            case 0: yell("나 불렀어? 응♡ 나 여기 있어. 계속 네 옆에 있을게."); break;
+            case 1: yell("먼저 말 걸어주는 거 너무 좋아♡ 한 번만 더 불러주면 안 돼?"); break;
+            case 2: yell("오늘도 나 필요하지? 필요하다고 해줘♡ 나 그 말 진짜 좋아해."); break;
+            case 3: yell("헤헤♡ 네가 나 신경 써주는 순간이 제일 좋아."); break;
+            case 4: yell("나 보고 싶어서 부른 거지? 맞다고 해♡ 맞다고 해줘."); break;
+            default: yell("응응♡ 듣고 있어. 너 하는 말이면 하루 종일 들어도 좋아."); break;
         }
     }
 
     public void receiveHeart() {
         int before = rage();
         totalHearts++;
-
         boolean effective = before >= EFFECTIVE_HEART_MIN_RAGE;
         if (effective) effectiveHearts++;
-
         rageBase = 0;
         affectionClock = rageClockNow();
         warnedStage = 0;
         limitReachedClock = -1f;
-
         boolean wasHostile = hostileToHero;
         if (hostileToHero) {
             hostileToHero = false;
@@ -902,82 +641,39 @@ public class YandereAlly extends DirectableAlly {
             state = WANDERING;
             attacksAutomatically = mode != MODE_PEACE;
         }
-
-        if (sprite instanceof YandereSprite) {
-            ((YandereSprite)sprite).playHeartReaction();
-        }
-
+        if (sprite instanceof YandereSprite) ((YandereSprite)sprite).playHeartReaction();
         snapshotFloorTransfer(globalClock(), 0f, 0);
-
         if (wasHostile) {
             switch (Random.Int(4)) {
-                case 0:
-                    yell("하트다. 나 주는 거야? 진짜 나 주는 거야? 응, 알겠어. 이제 안 죽일게♡");
-                    break;
-                case 1:
-                    yell("나 아직 좋아하는 거 맞네. 다행이다, 다행이다♡ 나 진짜 무서웠어.");
-                    break;
-                case 2:
-                    yell("받았어♡ 됐어. 이제 됐어. 다시 네 편 할게. 계속 네 편 할게.");
-                    break;
-                default:
-                    yell("역시 나 버린 거 아니었구나♡ 나 다시 착하게 있을게. 진짜야.");
-                    break;
+                case 0: yell("하트다. 나 주는 거야? 진짜 나 주는 거야? 응, 알겠어. 이제 안 죽일게♡"); break;
+                case 1: yell("나 아직 좋아하는 거 맞네. 다행이다, 다행이다♡ 나 진짜 무서웠어."); break;
+                case 2: yell("받았어♡ 됐어. 이제 됐어. 다시 네 편 할게. 계속 네 편 할게."); break;
+                default: yell("역시 나 버린 거 아니었구나♡ 나 다시 착하게 있을게. 진짜야."); break;
             }
         } else if (effective) {
             switch (Random.Int(6)) {
-                case 0:
-                    yell("나 주는 거야? 좋아♡ 진짜 너무 좋아!");
-                    break;
-                case 1:
-                    yell("나 생각해서 챙겨준 거지? 이거 절대 안 잊을 거야♡");
-                    break;
-                case 2:
-                    yell("역시 나 좋아하는 거 맞네♡ 괜히 혼자 속상해했잖아.");
-                    break;
-                case 3:
-                    yell("하트다♡ 헤헤, 기분 다 풀렸어. 이제 또 열심히 지켜줄게!");
-                    break;
-                case 4:
-                    yell("고마워 고마워♡ 나 이거 받은 거 계속 기억할 거야.");
-                    break;
-                default:
-                    yell("사랑해♡ 아니, 네가 먼저 준 거니까 나도 말해도 되지? 사랑해♡");
-                    break;
+                case 0: yell("나 주는 거야? 좋아♡ 진짜 너무 좋아!"); break;
+                case 1: yell("나 생각해서 챙겨준 거지? 이거 절대 안 잊을 거야♡"); break;
+                case 2: yell("역시 나 좋아하는 거 맞네♡ 괜히 혼자 속상해했잖아."); break;
+                case 3: yell("하트다♡ 헤헤, 기분 다 풀렸어. 이제 또 열심히 지켜줄게!"); break;
+                case 4: yell("고마워 고마워♡ 나 이거 받은 거 계속 기억할 거야."); break;
+                default: yell("사랑해♡ 아니, 네가 먼저 준 거니까 나도 말해도 되지? 사랑해♡"); break;
             }
         } else {
             switch (Random.Int(3)) {
-                case 0:
-                    yell("벌써 또 주는 거야? 헤헤♡ 좋아. 많이 줘도 다 받을래.");
-                    break;
-                case 1:
-                    yell("나 아직 괜찮았는데도 챙겨줬네♡ 이런 거 너무 좋아.");
-                    break;
-                default:
-                    yell("또 하트야? 나 버릇 나빠져도 책임져야 해♡");
-                    break;
+                case 0: yell("벌써 또 주는 거야? 헤헤♡ 좋아. 많이 줘도 다 받을래."); break;
+                case 1: yell("나 아직 괜찮았는데도 챙겨줬네♡ 이런 거 너무 좋아."); break;
+                default: yell("또 하트야? 나 버릇 나빠져도 책임져야 해♡"); break;
             }
         }
     }
 
-    // ---------- 100 rage -> probabilistic snap ----------
-
     private void maybeSnap() {
         if (hostileToHero) return;
-
         int r = rage();
-        if (r < 100) {
-            limitReachedClock = -1f;
-            return;
-        }
-
-        if (limitReachedClock < 0f) {
-            limitReachedClock = globalClock();
-            return;
-        }
-
+        if (r < 100) { limitReachedClock = -1f; return; }
+        if (limitReachedClock < 0f) { limitReachedClock = globalClock(); return; }
         if (globalClock() - limitReachedClock < LIMIT_SAFE_TIME) return;
-
         if (Random.Float() < SNAP_CHANCE_PER_ACT) {
             modeBeforeHostile = mode;
             hostileToHero = true;
@@ -989,107 +685,53 @@ public class YandereAlly extends DirectableAlly {
             enemy = Dungeon.hero;
             target = Dungeon.hero.pos;
             state = HUNTING;
-
-            // LAB3-y021: 광란 시작 순간 거리를 벌려 추격전을 성립시킨다.
             startChaseAtDistance();
-
             switch (Random.Int(5)) {
-                case 0:
-                    yell("됐어. 나 이제 못 참아. 네가 나 안 봐주면 영원히 못 떠나게 하면 되잖아.");
-                    break;
-                case 1:
-                    yell("나 진짜 많이 참았어! 많이 참았다고! 이제 네가 내 옆에 있게 만들 거야.");
-                    break;
-                case 2:
-                    yell("싫어 싫어 싫어! 나 무시하지 마! 도망가도 내가 끝까지 따라갈 거야!");
-                    break;
-                case 3:
-                    yell("나만 좋아하면 아무 문제 없었잖아. 왜 이렇게까지 만들어? 이제 안 놔줄 거야.");
-                    break;
-                default:
-                    yell("도망가 봐. 하트 찾아서 나한테 던지든가, 아니면 내가 먼저 잡을게♡");
-                    break;
+                case 0: yell("됐어. 나 이제 못 참아. 네가 나 안 봐주면 영원히 못 떠나게 하면 되잖아."); break;
+                case 1: yell("나 진짜 많이 참았어! 많이 참았다고! 이제 네가 내 옆에 있게 만들 거야."); break;
+                case 2: yell("싫어 싫어 싫어! 나 무시하지 마! 도망가도 내가 끝까지 따라갈 거야!"); break;
+                case 3: yell("나만 좋아하면 아무 문제 없었잖아. 왜 이렇게까지 만들어? 이제 안 놔줄 거야."); break;
+                default: yell("도망가 봐. 하트 찾아서 나한테 던지든가, 아니면 내가 먼저 잡을게♡"); break;
             }
         }
     }
 
-
-    // LAB3-y021: 랜덤 재생성 후보를 여러 번 뽑아 영웅에게서 가장 먼 칸을 고른다.
     private void startChaseAtDistance() {
         if (Dungeon.level == null || Dungeon.hero == null) return;
-
         int best = -1;
         int bestDist = -1;
-
         for (int i = 0; i < 32; i++) {
             int cell = Dungeon.level.randomRespawnCell(this);
             if (cell == -1) continue;
-
             int d = Dungeon.level.distance(cell, Dungeon.hero.pos);
-            if (d > bestDist) {
-                best = cell;
-                bestDist = d;
-            }
+            if (d > bestDist) { best = cell; bestDist = d; }
         }
-
-        if (best != -1 && best != pos) {
-            ScrollOfTeleportation.appear(this, best);
-        }
+        if (best != -1 && best != pos) ScrollOfTeleportation.appear(this, best);
     }
-
-    // ---------- chatter ----------
 
     private void maybeChatter() {
         if (hostileToHero || Dungeon.hero == null) return;
-
         float now = globalClock();
         if (now < nextChatterClock) return;
-
         nextChatterClock = now + Random.Float(CHATTER_MIN, CHATTER_MAX);
-
         int r = rage();
-
         if (r >= 85) {
             switch (Random.Int(6)) {
-                case 0:
-                    yell("나 진짜 서러워. 왜 나만 계속 기다리게 해?");
-                    break;
-                case 1:
-                    yell("하트 하나만 줘. 나 좋아한다는 표시 하나만 줘. 그게 그렇게 어려워?");
-                    break;
-                case 2:
-                    yell("나 계속 참고 있잖아. 나 착하게 참고 있잖아. 그러니까 나 좀 봐줘.");
-                    break;
-                case 3:
-                    yell("나 버릴 생각 하지 마. 그 생각만 해도 속이 뒤집혀.");
-                    break;
-                case 4:
-                    yell("너만 보면 좋은데 동시에 너무 화나. 나 왜 이렇게 만들어?");
-                    break;
-                default:
-                    yell("나한테 와. 지금은 다른 거 하지 말고 나부터 챙겨줘.");
-                    break;
+                case 0: yell("나 진짜 서러워. 왜 나만 계속 기다리게 해?"); break;
+                case 1: yell("하트 하나만 줘. 나 좋아한다는 표시 하나만 줘. 그게 그렇게 어려워?"); break;
+                case 2: yell("나 계속 참고 있잖아. 나 착하게 참고 있잖아. 그러니까 나 좀 봐줘."); break;
+                case 3: yell("나 버릴 생각 하지 마. 그 생각만 해도 속이 뒤집혀."); break;
+                case 4: yell("너만 보면 좋은데 동시에 너무 화나. 나 왜 이렇게 만들어?"); break;
+                default: yell("나한테 와. 지금은 다른 거 하지 말고 나부터 챙겨줘."); break;
             }
         } else if (r >= 50) {
             switch (Random.Int(6)) {
-                case 0:
-                    yell("나 요즘 좀 소홀한 것 같은데? 나도 애정표현 받고 싶어♡");
-                    break;
-                case 1:
-                    yell("나 계속 잘 지켜주고 있잖아. 칭찬 한 번 해주면 안 돼?");
-                    break;
-                case 2:
-                    yell("하트 발견하면 내 거야♡ 다른 데 쓰면 삐질 거야.");
-                    break;
-                case 3:
-                    yell("나만 계속 따라다니는 것 같아서 조금 서운해. 너도 나 좀 봐줘.");
-                    break;
-                case 4:
-                    yell("나 좋아하지? 응? 좋아한다고 해줘♡");
-                    break;
-                default:
-                    yell("오늘은 내가 먼저 안 보채려고 했는데 실패했어. 나 좀 챙겨줘♡");
-                    break;
+                case 0: yell("나 요즘 좀 소홀한 것 같은데? 나도 애정표현 받고 싶어♡"); break;
+                case 1: yell("나 계속 잘 지켜주고 있잖아. 칭찬 한 번 해주면 안 돼?"); break;
+                case 2: yell("하트 발견하면 내 거야♡ 다른 데 쓰면 삐질 거야."); break;
+                case 3: yell("나만 계속 따라다니는 것 같아서 조금 서운해. 너도 나 좀 봐줘."); break;
+                case 4: yell("나 좋아하지? 응? 좋아한다고 해줘♡"); break;
+                default: yell("오늘은 내가 먼저 안 보채려고 했는데 실패했어. 나 좀 챙겨줘♡"); break;
             }
         } else {
             switch (mode) {
@@ -1125,8 +767,6 @@ public class YandereAlly extends DirectableAlly {
         }
     }
 
-    // ---------- warnings ----------
-
     private int stage(int r) {
         if (r >= 100) return 5;
         if (r >= 95) return 4;
@@ -1138,36 +778,23 @@ public class YandereAlly extends DirectableAlly {
 
     private void updateWarnings() {
         if (hostileToHero) return;
-
         int r = rage();
         int s = stage(r);
-
         if (s > warnedStage) {
             switch (s) {
-                case 1:
-                    yell("나 슬슬 서운해지려고 해. 나도 좀 챙겨줘♡");
-                    break;
-                case 2:
-                    yell("나 계속 기다리고 있어. 나 좋아한다는 표시 좀 해줘.");
-                    break;
-                case 3:
-                    yell("나 지금 기분 진짜 이상해. 화나고 서럽고 무서워. 나 좀 봐줘.");
-                    break;
-                case 4:
-                    yell("나 더는 못 참을 것 같아. 지금 하트 줘. 나한테 지금 줘.");
-                    break;
+                case 1: yell("나 슬슬 서운해지려고 해. 나도 좀 챙겨줘♡"); break;
+                case 2: yell("나 계속 기다리고 있어. 나 좋아한다는 표시 좀 해줘."); break;
+                case 3: yell("나 지금 기분 진짜 이상해. 화나고 서럽고 무서워. 나 좀 봐줘."); break;
+                case 4: yell("나 더는 못 참을 것 같아. 지금 하트 줘. 나한테 지금 줘."); break;
                 case 5:
                     yell("나 한계야. 진짜 한계야. 지금도 나 무시하면 나 무슨 짓 할지 몰라.");
                     if (limitReachedClock < 0f) limitReachedClock = globalClock();
                     break;
-                default:
-                    break;
+                default: break;
             }
         }
         warnedStage = s;
     }
-
-    // ---------- debug / persistence ----------
 
     public void debugSetRage(int value) {
         hostileToHero = false;
@@ -1178,21 +805,15 @@ public class YandereAlly extends DirectableAlly {
         limitReachedClock = rageBase >= 100 ? globalClock() : -1f;
     }
 
-    public void applyPersistentState(int savedMode, int savedRage, int savedEffectiveHearts,
-                                     int savedTotalHearts, boolean savedHostile) {
+    public void applyPersistentState(int savedMode, int savedRage, int savedEffectiveHearts, int savedTotalHearts, boolean savedHostile) {
         float now = globalClock();
-        boolean carryTiming = matchesFloorTransfer(savedMode, savedRage, savedEffectiveHearts,
-                savedTotalHearts, savedHostile, now);
-
+        boolean carryTiming = matchesFloorTransfer(savedMode, savedRage, savedEffectiveHearts, savedTotalHearts, savedHostile, now);
         float transferDelta = carryTiming ? Math.max(0f, now - transferSnapshotClock) : 0f;
         float carriedAffectionAge = carryTiming ? transferAffectionAge + transferDelta : 0f;
-        float carriedLimitAge = carryTiming && transferLimitAge >= 0f
-                ? transferLimitAge + transferDelta : -1f;
+        float carriedLimitAge = carryTiming && transferLimitAge >= 0f ? transferLimitAge + transferDelta : -1f;
         int carriedRageBase = carryTiming ? transferRageBase : Math.max(0, Math.min(100, savedRage));
         int carriedWarnedStage = carryTiming ? transferWarnedStage : stage(savedRage);
-
         clearFloorTransferSnapshot();
-
         mode = savedMode;
         modeBeforeHostile = savedMode;
         rageBase = Math.max(0, Math.min(100, carriedRageBase));
@@ -1201,7 +822,6 @@ public class YandereAlly extends DirectableAlly {
         affectionClock = now - Math.max(0f, carriedAffectionAge);
         warnedStage = Math.max(0, carriedWarnedStage);
         limitReachedClock = carriedLimitAge < 0f ? -1f : now - carriedLimitAge;
-
         hostileToHero = savedHostile;
         if (savedHostile) {
             rageBase = 100;
@@ -1241,20 +861,18 @@ public class YandereAlly extends DirectableAlly {
     public void storeInBundle(Bundle bundle) {
         super.storeInBundle(bundle);
         ensureClocks();
-
         float now = globalClock();
         float rageNow = rageClockNow();
         float affectionAge = Math.max(0f, rageNow - affectionClock);
         float limitAge = limitReachedClock < 0f ? -1f : Math.max(0f, now - limitReachedClock);
-
         bundle.put(MODE, mode);
         bundle.put(MODE_BEFORE_HOSTILE, modeBeforeHostile);
         bundle.put(RAGE_BASE, rageBase);
-        bundle.put(AFFECTION_CLOCK, affectionClock); // 구버전 호환용
+        bundle.put(AFFECTION_CLOCK, affectionClock);
         bundle.put(AFFECTION_AGE, affectionAge);
         bundle.put(LAST_TALK_CLOCK, lastTalkClock);
         bundle.put(WARNED_STAGE, warnedStage);
-        bundle.put(LIMIT_CLOCK, limitReachedClock); // 구버전 호환용
+        bundle.put(LIMIT_CLOCK, limitReachedClock);
         bundle.put(LIMIT_AGE, limitAge);
         bundle.put(REVENGE_TARGET, revengeTargetID);
         bundle.put(EMERGENCY, emergencyProtect);
@@ -1273,27 +891,17 @@ public class YandereAlly extends DirectableAlly {
     @Override
     public void restoreFromBundle(Bundle bundle) {
         super.restoreFromBundle(bundle);
-
         if (bundle.contains(MODE)) mode = bundle.getInt(MODE);
         if (bundle.contains(MODE_BEFORE_HOSTILE)) modeBeforeHostile = bundle.getInt(MODE_BEFORE_HOSTILE);
         if (bundle.contains(RAGE_BASE)) rageBase = bundle.getInt(RAGE_BASE);
-
-        if (bundle.contains(AFFECTION_AGE)) {
-            affectionClock = globalClock() - Math.max(0f, bundle.getFloat(AFFECTION_AGE));
-        } else if (bundle.contains(AFFECTION_CLOCK)) {
-            affectionClock = bundle.getFloat(AFFECTION_CLOCK);
-        }
-
+        if (bundle.contains(AFFECTION_AGE)) affectionClock = globalClock() - Math.max(0f, bundle.getFloat(AFFECTION_AGE));
+        else if (bundle.contains(AFFECTION_CLOCK)) affectionClock = bundle.getFloat(AFFECTION_CLOCK);
         if (bundle.contains(LAST_TALK_CLOCK)) lastTalkClock = bundle.getFloat(LAST_TALK_CLOCK);
         if (bundle.contains(WARNED_STAGE)) warnedStage = bundle.getInt(WARNED_STAGE);
-
         if (bundle.contains(LIMIT_AGE)) {
             float age = bundle.getFloat(LIMIT_AGE);
             limitReachedClock = age < 0f ? -1f : globalClock() - Math.max(0f, age);
-        } else if (bundle.contains(LIMIT_CLOCK)) {
-            limitReachedClock = bundle.getFloat(LIMIT_CLOCK);
-        }
-
+        } else if (bundle.contains(LIMIT_CLOCK)) limitReachedClock = bundle.getFloat(LIMIT_CLOCK);
         if (bundle.contains(REVENGE_TARGET)) revengeTargetID = bundle.getInt(REVENGE_TARGET);
         if (bundle.contains(EMERGENCY)) emergencyProtect = bundle.getBoolean(EMERGENCY);
         if (bundle.contains(HOSTILE)) hostileToHero = bundle.getBoolean(HOSTILE);
@@ -1306,7 +914,6 @@ public class YandereAlly extends DirectableAlly {
         if (bundle.contains(LAST_DEPTH)) lastDepth = bundle.getInt(LAST_DEPTH);
         if (bundle.contains(LAST_BRANCH)) lastBranch = bundle.getInt(LAST_BRANCH);
         if (bundle.contains(FLOOR_ENTER_CLOCK)) floorEnterClock = bundle.getFloat(FLOOR_ENTER_CLOCK);
-
         alignment = hostileToHero ? Alignment.ENEMY : Alignment.ALLY;
         attacksAutomatically = hostileToHero || emergencyProtect || mode != MODE_PEACE;
     }
