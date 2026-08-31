@@ -31,7 +31,6 @@ jobs:
                   raise SystemExit(f'anchor not found: {label}')
               return text.replace(old, new, 1)
 
-          # --- Stage 9: make Dried Rose jealousy brutally strict ---
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereJealousy.java')
           text = p.read_text()
           text = replace_once(text,
@@ -66,7 +65,6 @@ jobs:
               'jealousy ribbon lookup')
           p.write_text(text)
 
-          # --- Stage 10: bonded ribbon abandonment curse ---
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/RedRibbon.java')
           text = p.read_text()
           text = replace_once(text,
@@ -78,8 +76,7 @@ jobs:
               'import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;\nimport com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;\n',
               'RedRibbon Buff import')
           text = replace_once(text,
-              '''    public static final int MAX_GROWTH_HEARTS = 48;
-          ''',
+              '    public static final int MAX_GROWTH_HEARTS = 48;\n',
               '''    public static final int MAX_GROWTH_HEARTS = 48;
 
               private static final float ABANDONMENT_DAMAGE_MULTIPLIER = 0.80f;
@@ -87,26 +84,17 @@ jobs:
               private static final float ABANDONMENT_STAGE_1 = 30f;
               private static final float ABANDONMENT_STAGE_2 = 80f;
               private static final float ABANDONMENT_STAGE_3 = 150f;
-          ''',
+              ''',
               'RedRibbon curse constants')
           text = replace_once(text,
-              '''    private int growthHearts = 0;
-          ''',
+              '    private int growthHearts = 0;\n',
               '''    private int growthHearts = 0;
 
               private boolean abandonmentActive = false;
               private float abandonmentStartClock = -1f;
               private int abandonmentStage = -1;
-          ''',
+              ''',
               'RedRibbon curse fields')
-          text = replace_once(text,
-              '''                + "하트는 리본 메뉴에서 공짜로 먹이는 방식이 아니라 던전 바닥에서 직접 주워 "
-                              + "얀데레에게 던져야 한다.";''',
-              '''                + "하트는 리본 메뉴에서 공짜로 먹이는 방식이 아니라 던전 바닥에서 직접 주워 "
-                              + "얀데레에게 던져야 한다.\\n\\n"
-                              + "한 번 소환해 유대가 생긴 뒤 이 리본을 버리면 「버리지 마.」가 발동한다. "
-                              + "리본을 다시 주울 때까지 영웅의 공격력이 20% 감소하고 공격 속도도 20% 느려진다.";''',
-              'RedRibbon description')
           text = replace_once(text,
               '''    public ArrayList<String> actions(Hero hero) {
                   ArrayList<String> actions = new ArrayList<>();
@@ -139,9 +127,7 @@ jobs:
                   boolean bonded = isBonded();
                   YandereAlly ally = findAlly();
                   if (ally != null) captureFrom(ally);
-
                   super.doDrop(hero);
-
                   if (bonded) {
                       abandonmentActive = true;
                       abandonmentStartClock = globalCurseClock();
@@ -175,7 +161,6 @@ jobs:
                   if (Dungeon.hero != null && Dungeon.hero.belongings != null) {
                       RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
                       if (carried != null) return carried;
-
                       RibbonTransit transit = Dungeon.hero.buff(RibbonTransit.class);
                       if (transit != null && transit.ribbon != null) return transit.ribbon;
                   }
@@ -185,12 +170,10 @@ jobs:
               public static boolean abandonmentCurseActive(Hero hero) {
                   if (hero == null || hero.belongings == null) return false;
                   if (hero.belongings.getItem(RedRibbon.class) != null) return false;
-
                   RibbonTransit transit = hero.buff(RibbonTransit.class);
                   if (transit != null && transit.ribbon != null) {
                       return transit.ribbon.isBonded() && transit.ribbon.abandonmentActive;
                   }
-
                   RedRibbon floorRibbon = findFloorRibbon();
                   return floorRibbon != null && floorRibbon.isBonded() && floorRibbon.abandonmentActive;
               }
@@ -207,9 +190,7 @@ jobs:
                   if (Dungeon.level == null || Dungeon.level.heaps == null) return null;
                   for (Heap heap : Dungeon.level.heaps.valueList()) {
                       if (heap == null) continue;
-                      for (Item item : heap.items) {
-                          if (item instanceof RedRibbon) return (RedRibbon)item;
-                      }
+                      for (Item item : heap.items) if (item instanceof RedRibbon) return (RedRibbon)item;
                   }
                   return null;
               }
@@ -233,7 +214,6 @@ jobs:
                   if (elapsed >= ABANDONMENT_STAGE_3) stage = 3;
                   else if (elapsed >= ABANDONMENT_STAGE_2) stage = 2;
                   else if (elapsed >= ABANDONMENT_STAGE_1) stage = 1;
-
                   if (stage > abandonmentStage) {
                       abandonmentStage = stage;
                       speakAbandonmentLine(stage);
@@ -245,7 +225,6 @@ jobs:
                   abandonmentStartClock = -1f;
                   abandonmentStage = -1;
                   if (!speak) return;
-
                   YandereAlly ally = findAlly();
                   if (ally != null && ally.isAlive()) ally.yell("다시는 버리지 마. 알았지?♡");
                   else GLog.i("붉은 리본을 다시 주웠다. 싸늘하던 기운이 가라앉았다.");
@@ -254,18 +233,10 @@ jobs:
               private void speakAbandonmentLine(int stage) {
                   String line;
                   switch (stage) {
-                      case 3:
-                          line = "계속 두고 가 봐. 네가 싸울 때마다 내가 얼마나 싫은지 느끼게 해줄게.";
-                          break;
-                      case 2:
-                          line = "나 버린 거 아니지? 아니라고 해. 지금 와서 주워.";
-                          break;
-                      case 1:
-                          line = "주워. 나 여기 있잖아. 왜 그냥 가?";
-                          break;
-                      default:
-                          line = "버리지 마.";
-                          break;
+                      case 3: line = "계속 두고 가 봐. 네가 싸울 때마다 내가 얼마나 싫은지 느끼게 해줄게."; break;
+                      case 2: line = "나 버린 거 아니지? 아니라고 해. 지금 와서 주워."; break;
+                      case 1: line = "주워. 나 여기 있잖아. 왜 그냥 가?"; break;
+                      default: line = "버리지 마."; break;
                   }
                   YandereAlly ally = findAlly();
                   if (ally != null && ally.isAlive()) ally.yell(line);
@@ -300,7 +271,6 @@ jobs:
                   if (ribbon == null) return;''',
               '''    public static void beforeTransition() {
                   if (Dungeon.hero == null) return;
-
                   RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
                   RedRibbon ribbon = carried != null ? carried : findFloorRibbon();
                   if (ribbon == null) {
@@ -308,16 +278,11 @@ jobs:
                       if (existingTransit != null) ribbon = existingTransit.ribbon;
                   }
                   if (ribbon == null) return;
-
-                  // An unbonded ribbon is just an ordinary dropped item. Only a ribbon
-                  // that has already summoned the yandere follows between floors.
                   if (carried == null && !ribbon.isBonded()) return;
-
                   YandereAlly ally = ribbon.findAlly();
                   ribbon.warnAboutMissedHeart(ally);
                   if (ally != null) ribbon.captureFrom(ally);
                   ribbon.allyID = 0;
-
                   if (carried == null) {
                       Heap heap = floorHeapContaining(ribbon);
                       if (heap != null) {
@@ -333,19 +298,15 @@ jobs:
                   for (int off : PathFinder.NEIGHBOURS8) {
                       int cell = hero.pos + off;
                       if (cell < 0 || cell >= Dungeon.level.length()) continue;
-                      if (Actor.findChar(cell) == null && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) {
-                          return cell;
-                      }
+                      if (Actor.findChar(cell) == null && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) return cell;
                   }
                   return hero.pos;
               }
 
               public static void ensureYanderePresent() {
                   if (Dungeon.hero == null || Dungeon.level == null) return;
-
                   RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
                   RedRibbon ribbon = carried;
-
                   if (ribbon == null) {
                       RibbonTransit transit = Dungeon.hero.buff(RibbonTransit.class);
                       if (transit != null && transit.ribbon != null) {
@@ -356,15 +317,11 @@ jobs:
                               if (heap.sprite != null) heap.sprite.drop(Dungeon.hero.pos);
                               GLog.w("버린 붉은 리본이 계단 근처까지 따라왔다.");
                           }
-                      } else {
-                          ribbon = findFloorRibbon();
-                      }
+                      } else ribbon = findFloorRibbon();
                   }
-
                   if (ribbon == null) return;
                   if (carried != null && ribbon.abandonmentActive) ribbon.stopAbandonmentCurse(false);
                   ribbon.updateAbandonmentCurse();
-
                   if (!ribbon.summoned) return;
                   YandereAlly ally = ribbon.findAlly();
                   if (ally == null) ribbon.createOnCurrentFloor(Dungeon.hero, false);
@@ -389,11 +346,7 @@ jobs:
               public static class RibbonTransit extends Buff {
                   private static final String TRANSIT_RIBBON = "lab3_yandere_transit_ribbon";
                   private RedRibbon ribbon;
-
-                  {
-                      announced = false;
-                      revivePersists = true;
-                  }
+                  { announced = false; revivePersists = true; }
 
                   private RedRibbon takeRibbon() {
                       RedRibbon result = ribbon;
@@ -420,7 +373,7 @@ jobs:
 
               @Override
               public void storeInBundle(Bundle bundle) {''',
-              'RedRibbon transit buff and save constants')
+              'RedRibbon transit buff')
           text = replace_once(text,
               '''        bundle.put(SAVED_HOSTILE, savedHostile);
                   bundle.put(SAVED_GROWTH_HP, savedGrowthHP);
@@ -447,7 +400,6 @@ jobs:
               'RedRibbon restore curse')
           p.write_text(text)
 
-          # Hearts still use the same logical ribbon even while it is lying on the floor.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/YandereHeart.java')
           text = p.read_text()
           text = replace_once(text,
@@ -458,7 +410,6 @@ jobs:
               'heart ribbon lookup')
           p.write_text(text)
 
-          # Apply the abandonment penalties to the hero's actual damage roll and attack delay.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java')
           text = p.read_text()
           text = replace_once(text,
@@ -478,7 +429,6 @@ jobs:
               'hero unarmed curse delay')
           p.write_text(text)
 
-          # Move a dropped bonded ribbon into a hidden hero transit buff before the old floor is saved.
           p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/InterlevelScene.java')
           text = p.read_text()
           text = replace_once(text,
