@@ -75,8 +75,7 @@ jobs:
               assets.write_text(a)
           PY
 
-          base64 -d core/src/main/assets/sounds/yandere_laugh_mild_exact.mp3.b64 > core/src/main/assets/sounds/yandere_laugh_mild.mp3
-          rm core/src/main/assets/sounds/yandere_laugh_mild_exact.mp3.b64
+          rm -f core/src/main/assets/sounds/yandere_laugh_mild_exact.mp3.b64
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
