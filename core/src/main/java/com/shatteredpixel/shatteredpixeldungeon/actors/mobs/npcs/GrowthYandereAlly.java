@@ -4,14 +4,8 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
-import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob;
-import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.CorrosiveGas;
-import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Fire;
-import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.LifeLink;
-import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
-import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.RipperDemon;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
 import com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
@@ -256,24 +250,9 @@ public class GrowthYandereAlly extends YandereAlly {
         return true;
     }
 
-    private boolean environmentalHazardAt(int cell) {
-        if (Dungeon.level == null || cell < 0 || cell >= Dungeon.level.length()) return true;
-        return Blob.volumeAt(cell, Fire.class) > 0
-                || Blob.volumeAt(cell, ToxicGas.class) > 0
-                || Blob.volumeAt(cell, CorrosiveGas.class) > 0;
+    private boolean smartDangerAt(int cell) {
+        return YandereDangerSense.dangerAt(this, cell);
     }
-
-    private boolean telegraphedAttackAt(int cell) {
-        if (Dungeon.level == null) return false;
-        for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
-            if (mob == null || !mob.isAlive() || mob.alignment != Alignment.ENEMY) continue;
-            if (mob instanceof Eye && ((Eye)mob).chargedBeamThreatens(cell)) return true;
-            if (mob instanceof RipperDemon && ((RipperDemon)mob).leapThreatens(cell)) return true;
-        }
-        return false;
-    }
-
-    private boolean smartDangerAt(int cell) { return environmentalHazardAt(cell) || telegraphedAttackAt(cell); }
 
     private boolean safeOpenCell(int cell) {
         if (Dungeon.level == null || cell < 0 || cell >= Dungeon.level.length()) return false;
