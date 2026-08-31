@@ -49,7 +49,7 @@ public class YandereHeart extends Item {
             ((YandereAlly)ch).receiveHeart();
 
             RedRibbon ribbon = Dungeon.hero == null
-                    ? null : RedRibbon.findRibbonForRun();
+                ? null : RedRibbon.findRibbonForRun();
             boolean grew = ribbon != null && ribbon.recordGrowthHeart();
 
             if (grew) {
