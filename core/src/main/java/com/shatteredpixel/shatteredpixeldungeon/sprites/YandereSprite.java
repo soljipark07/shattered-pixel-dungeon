@@ -86,6 +86,26 @@ public class YandereSprite extends MobSprite {
         play(heartByState[NORMAL], true);
     }
 
+    private void updateRunCadence() {
+        int frameRate = 20;
+
+        if (ch instanceof YandereAlly && Dungeon.hero != null && Dungeon.level != null) {
+            YandereAlly ally = (YandereAlly) ch;
+            int heroDistance = Dungeon.level.distance(ally.pos, Dungeon.hero.pos);
+
+            // Beside the hero she walks at the same visual cadence as a human
+            // character. When she runs off at 1.5x ally speed, the animation
+            // accelerates by the same factor. Hostile pursuit remains 1x.
+            if (!ally.hostileToHero() && heroDistance > 2) {
+                frameRate = 30;
+            }
+        }
+
+        if (run != null) {
+            run.delay = 1f / frameRate;
+        }
+    }
+
     private int desiredVisualState() {
         if (!(ch instanceof YandereAlly)) return NORMAL;
 
@@ -136,6 +156,7 @@ public class YandereSprite extends MobSprite {
     @Override
     public void update() {
         switchVisualState(desiredVisualState());
+        updateRunCadence();
         hostileAura.update();
         super.update();
     }
