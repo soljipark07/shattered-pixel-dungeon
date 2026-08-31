@@ -3,6 +3,7 @@ package com.shatteredpixel.shatteredpixeldungeon.items;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.GrowthYandereAlly;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereAlly;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
@@ -50,6 +51,9 @@ public class YandereHeart extends Item {
             boolean grew = ribbon != null && ribbon.recordGrowthHeart();
 
             if (grew) {
+                if (ch instanceof GrowthYandereAlly) {
+                    ((GrowthYandereAlly)ch).syncGrowthHearts(ribbon.growthHearts());
+                }
                 GLog.p("하트를 건넸다. 광란도가 0으로 돌아갔고 성장 하트가 "
                         + ribbon.growthHearts() + "/" + RedRibbon.MAX_GROWTH_HEARTS + "이 됐다.");
             } else {
