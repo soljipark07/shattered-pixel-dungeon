@@ -1,7 +1,9 @@
 package com.shatteredpixel.shatteredpixeldungeon.items;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
+import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
+import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.actors.hero.Hero;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.GrowthYandereAlly;
@@ -25,12 +27,22 @@ public class RedRibbon extends Item {
     public static final int PROFILE_GROWTH = 1;
     public static final int MAX_GROWTH_HEARTS = 48;
 
+    private static final float ABANDONMENT_DAMAGE_MULTIPLIER = 0.80f;
+    private static final float ABANDONMENT_ATTACK_SPEED_MULTIPLIER = 0.80f;
+    private static final float ABANDONMENT_STAGE_1 = 30f;
+    private static final float ABANDONMENT_STAGE_2 = 80f;
+    private static final float ABANDONMENT_STAGE_3 = 150f;
+    
     private int allyID = 0;
     private boolean summoned = false;
     private int profile = PROFILE_CHEAT;
     private boolean profileLocked = false;
     private int growthHearts = 0;
 
+    private boolean abandonmentActive = false;
+    private float abandonmentStartClock = -1f;
+    private int abandonmentStage = -1;
+    
     private int lastHeartWarningDepth = Integer.MIN_VALUE;
     private int lastHeartWarningBranch = Integer.MIN_VALUE;
 
@@ -68,6 +80,7 @@ public class RedRibbon extends Item {
     public ArrayList<String> actions(Hero hero) {
         ArrayList<String> actions = new ArrayList<>();
         actions.add(AC_MANAGE);
+        actions.add(AC_DROP);
         return actions;
     }
 
@@ -83,10 +96,119 @@ public class RedRibbon extends Item {
         if (AC_MANAGE.equals(action)) showMainMenu(hero);
     }
 
+    @Override
+    public void doDrop(Hero hero) {
+        boolean bonded = isBonded();
+        YandereAlly ally = findAlly();
+        if (ally != null) captureFrom(ally);
+        super.doDrop(hero);
+        if (bonded) {
+            abandonmentActive = true;
+            abandonmentStartClock = globalCurseClock();
+            abandonmentStage = 0;
+            speakAbandonmentLine(0);
+        }
+    }
+
+    @Override
+    public boolean doPickUp(Hero hero, int pos) {
+        boolean wasAbandoned = abandonmentActive;
+        boolean result = super.doPickUp(hero, pos);
+        if (result && wasAbandoned) stopAbandonmentCurse(true);
+        return result;
+    }
+
     private String profileName() { return profile == PROFILE_GROWTH ? "성장형" : "치트형"; }
     public boolean isGrowthProfile() { return profile == PROFILE_GROWTH; }
     public int profile() { return profile; }
     public int growthHearts() { return growthHearts; }
+    public boolean isBonded() { return profileLocked || summoned; }
+
+    public static RedRibbon findRibbonForRun() {
+        if (Dungeon.hero != null && Dungeon.hero.belongings != null) {
+            RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
+            if (carried != null) return carried;
+            RibbonTransit transit = Dungeon.hero.buff(RibbonTransit.class);
+            if (transit != null && transit.ribbon != null) return transit.ribbon;
+        }
+        return findFloorRibbon();
+    }
+
+    public static boolean abandonmentCurseActive(Hero hero) {
+        if (hero == null || hero.belongings == null) return false;
+        if (hero.belongings.getItem(RedRibbon.class) != null) return false;
+        RibbonTransit transit = hero.buff(RibbonTransit.class);
+        if (transit != null && transit.ribbon != null) {
+            return transit.ribbon.isBonded() && transit.ribbon.abandonmentActive;
+        }
+        RedRibbon floorRibbon = findFloorRibbon();
+        return floorRibbon != null && floorRibbon.isBonded() && floorRibbon.abandonmentActive;
+    }
+
+    public static float abandonmentDamageMultiplier(Hero hero) {
+        return abandonmentCurseActive(hero) ? ABANDONMENT_DAMAGE_MULTIPLIER : 1f;
+    }
+
+    public static float abandonmentAttackDelayMultiplier(Hero hero) {
+        return abandonmentCurseActive(hero) ? 1f / ABANDONMENT_ATTACK_SPEED_MULTIPLIER : 1f;
+    }
+
+    private static RedRibbon findFloorRibbon() {
+        if (Dungeon.level == null || Dungeon.level.heaps == null) return null;
+        for (Heap heap : Dungeon.level.heaps.valueList()) {
+            if (heap == null) continue;
+            for (Item item : heap.items) if (item instanceof RedRibbon) return (RedRibbon)item;
+        }
+        return null;
+    }
+
+    private static Heap floorHeapContaining(RedRibbon ribbon) {
+        if (ribbon == null || Dungeon.level == null || Dungeon.level.heaps == null) return null;
+        for (Heap heap : Dungeon.level.heaps.valueList()) {
+            if (heap != null && heap.items.contains(ribbon)) return heap;
+        }
+        return null;
+    }
+
+    private static float globalCurseClock() {
+        return Statistics.duration + Actor.now();
+    }
+
+    private void updateAbandonmentCurse() {
+        if (!abandonmentActive || !isBonded()) return;
+        float elapsed = Math.max(0f, globalCurseClock() - abandonmentStartClock);
+        int stage = 0;
+        if (elapsed >= ABANDONMENT_STAGE_3) stage = 3;
+        else if (elapsed >= ABANDONMENT_STAGE_2) stage = 2;
+        else if (elapsed >= ABANDONMENT_STAGE_1) stage = 1;
+        if (stage > abandonmentStage) {
+            abandonmentStage = stage;
+            speakAbandonmentLine(stage);
+        }
+    }
+
+    private void stopAbandonmentCurse(boolean speak) {
+        abandonmentActive = false;
+        abandonmentStartClock = -1f;
+        abandonmentStage = -1;
+        if (!speak) return;
+        YandereAlly ally = findAlly();
+        if (ally != null && ally.isAlive()) ally.yell("다시는 버리지 마. 알았지?♡");
+        else GLog.i("붉은 리본을 다시 주웠다. 싸늘하던 기운이 가라앉았다.");
+    }
+
+    private void speakAbandonmentLine(int stage) {
+        String line;
+        switch (stage) {
+            case 3: line = "계속 두고 가 봐. 네가 싸울 때마다 내가 얼마나 싫은지 느끼게 해줄게."; break;
+            case 2: line = "나 버린 거 아니지? 아니라고 해. 지금 와서 주워."; break;
+            case 1: line = "주워. 나 여기 있잖아. 왜 그냥 가?"; break;
+            default: line = "버리지 마."; break;
+        }
+        YandereAlly ally = findAlly();
+        if (ally != null && ally.isAlive()) ally.yell(line);
+        else GLog.w(line);
+    }
 
     public boolean recordGrowthHeart() {
         if (!isGrowthProfile() || growthHearts >= MAX_GROWTH_HEARTS) return false;
@@ -338,18 +460,60 @@ public class RedRibbon extends Item {
 
     public static void beforeTransition() {
         if (Dungeon.hero == null) return;
-        RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
+        RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
+        RedRibbon ribbon = carried != null ? carried : findFloorRibbon();
+        if (ribbon == null) {
+            RibbonTransit existingTransit = Dungeon.hero.buff(RibbonTransit.class);
+            if (existingTransit != null) ribbon = existingTransit.ribbon;
+        }
         if (ribbon == null) return;
+        if (carried == null && !ribbon.isBonded()) return;
         YandereAlly ally = ribbon.findAlly();
         ribbon.warnAboutMissedHeart(ally);
         if (ally != null) ribbon.captureFrom(ally);
         ribbon.allyID = 0;
+        if (carried == null) {
+            Heap heap = floorHeapContaining(ribbon);
+            if (heap != null) {
+                heap.remove(ribbon);
+                RibbonTransit transit = Buff.affect(Dungeon.hero, RibbonTransit.class);
+                transit.ribbon = ribbon;
+            }
+        }
+    }
+
+    private static int ribbonDropCell(Hero hero) {
+        if (Dungeon.level == null || hero == null) return -1;
+        for (int off : PathFinder.NEIGHBOURS8) {
+            int cell = hero.pos + off;
+            if (cell < 0 || cell >= Dungeon.level.length()) continue;
+            if (Actor.findChar(cell) == null && (Dungeon.level.passable[cell] || Dungeon.level.avoid[cell])) return cell;
+        }
+        return hero.pos;
     }
 
     public static void ensureYanderePresent() {
         if (Dungeon.hero == null || Dungeon.level == null) return;
-        RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
-        if (ribbon == null || !ribbon.summoned) return;
+        RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
+        RedRibbon ribbon = carried;
+        if (ribbon == null) {
+            RibbonTransit transit = Dungeon.hero.buff(RibbonTransit.class);
+            if (transit != null && transit.ribbon != null) {
+                ribbon = transit.takeRibbon();
+                int cell = ribbonDropCell(Dungeon.hero);
+                if (cell >= 0) {
+                    Heap heap = Dungeon.level.drop(ribbon, cell);
+                    if (heap.sprite != null) heap.sprite.drop(Dungeon.hero.pos);
+                    GLog.w("버린 붉은 리본이 계단 근처까지 따라왔다.");
+                }
+            } else {
+                ribbon = findFloorRibbon();
+            }
+        }
+        if (ribbon == null) return;
+        if (carried != null && ribbon.abandonmentActive) ribbon.stopAbandonmentCurse(false);
+        ribbon.updateAbandonmentCurse();
+        if (!ribbon.summoned) return;
         YandereAlly ally = ribbon.findAlly();
         if (ally == null) ribbon.createOnCurrentFloor(Dungeon.hero, false);
         else ribbon.captureFrom(ally);
@@ -357,7 +521,7 @@ public class RedRibbon extends Item {
 
     public static void onYandereDied(YandereAlly ally) {
         if (Dungeon.hero == null) return;
-        RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
+        RedRibbon ribbon = findRibbonForRun();
         if (ribbon == null) return;
         ribbon.summoned = false;
         ribbon.allyID = 0;
@@ -499,6 +663,37 @@ public class RedRibbon extends Item {
     private static final String SAVED_TOTAL = "lab3_yandere_saved_total_hearts";
     private static final String SAVED_HOSTILE = "lab3_yandere_saved_hostile";
     private static final String SAVED_GROWTH_HP = "lab3_yandere_saved_growth_hp";
+    private static final String ABANDONMENT_ACTIVE = "lab3_yandere_abandonment_active";
+    private static final String ABANDONMENT_AGE = "lab3_yandere_abandonment_age";
+    private static final String ABANDONMENT_STAGE = "lab3_yandere_abandonment_stage";
+
+    public static class RibbonTransit extends Buff {
+        private static final String TRANSIT_RIBBON = "lab3_yandere_transit_ribbon";
+        private RedRibbon ribbon;
+        { announced = false; revivePersists = true; }
+
+        private RedRibbon takeRibbon() {
+            RedRibbon result = ribbon;
+            ribbon = null;
+            detach();
+            return result;
+        }
+
+        @Override
+        public void storeInBundle(Bundle bundle) {
+            super.storeInBundle(bundle);
+            if (ribbon != null) bundle.put(TRANSIT_RIBBON, ribbon);
+        }
+
+        @Override
+        public void restoreFromBundle(Bundle bundle) {
+            super.restoreFromBundle(bundle);
+            if (bundle.contains(TRANSIT_RIBBON)) {
+                Object restored = bundle.get(TRANSIT_RIBBON);
+                if (restored instanceof RedRibbon) ribbon = (RedRibbon)restored;
+            }
+        }
+    }
 
     @Override
     public void storeInBundle(Bundle bundle) {
@@ -518,6 +713,10 @@ public class RedRibbon extends Item {
         bundle.put(SAVED_TOTAL, savedTotalHearts);
         bundle.put(SAVED_HOSTILE, savedHostile);
         bundle.put(SAVED_GROWTH_HP, savedGrowthHP);
+        bundle.put(ABANDONMENT_ACTIVE, abandonmentActive);
+        bundle.put(ABANDONMENT_AGE, abandonmentActive && abandonmentStartClock >= 0f
+                ? Math.max(0f, globalCurseClock() - abandonmentStartClock) : 0f);
+        bundle.put(ABANDONMENT_STAGE, abandonmentStage);
     }
 
     @Override
@@ -535,6 +734,10 @@ public class RedRibbon extends Item {
         if (bundle.contains(SAVED_TOTAL)) savedTotalHearts = bundle.getInt(SAVED_TOTAL);
         if (bundle.contains(SAVED_HOSTILE)) savedHostile = bundle.getBoolean(SAVED_HOSTILE);
         if (bundle.contains(SAVED_GROWTH_HP)) savedGrowthHP = bundle.getInt(SAVED_GROWTH_HP);
+        abandonmentActive = bundle.contains(ABANDONMENT_ACTIVE) && bundle.getBoolean(ABANDONMENT_ACTIVE);
+        float abandonmentAge = bundle.contains(ABANDONMENT_AGE) ? Math.max(0f, bundle.getFloat(ABANDONMENT_AGE)) : 0f;
+        abandonmentStartClock = abandonmentActive ? globalCurseClock() - abandonmentAge : -1f;
+        abandonmentStage = bundle.contains(ABANDONMENT_STAGE) ? bundle.getInt(ABANDONMENT_STAGE) : -1;
 
         if (bundle.contains(PROFILE_LOCKED)) profileLocked = bundle.getBoolean(PROFILE_LOCKED);
         else {

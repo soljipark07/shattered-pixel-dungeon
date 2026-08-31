@@ -695,6 +695,7 @@ public class Hero extends Char {
 		}
 
 		if (dmg < 0) dmg = 0;
+		dmg = Math.round(dmg * RedRibbon.abandonmentDamageMultiplier(this));
 		return dmg;
 	}
 
@@ -786,7 +787,7 @@ public class Hero extends Char {
 
 		if (!RingOfForce.fightingUnarmed(this)) {
 			
-			return delay * belongings.attackingWeapon().delayFactor( this );
+			return delay * belongings.attackingWeapon().delayFactor( this ) * RedRibbon.abandonmentAttackDelayMultiplier(this);
 			
 		} else {
 			//Normally putting furor speed on unarmed attacks would be unnecessary
@@ -804,7 +805,7 @@ public class Hero extends Char {
 				delay = ((Weapon)belongings.weapon).augment.delayFactor(delay);
 			}
 
-			return delay/speed;
+			return (delay/speed) * RedRibbon.abandonmentAttackDelayMultiplier(this);
 		}
 	}
 

@@ -23,12 +23,12 @@ public final class YandereJealousy {
     private static final int GENERAL_WARNING = 10;
     private static final int GENERAL_KILL = 15;
 
-    private static final int ROSE_THREAT = 2;
-    private static final int ROSE_WARNING = 4;
-    private static final int ROSE_KILL = 5;
+    private static final int ROSE_THREAT = 1;
+    private static final int ROSE_WARNING = 2;
+    private static final int ROSE_KILL = 3;
 
     private static final int HEART_NPC_BUMP = 5;
-    private static final int HEART_ROSE_BUMP = 2;
+    private static final int HEART_ROSE_BUMP = 3;
     private static final int HEART_ENEMY_RAGE = 5;
 
     private YandereJealousy() {}
@@ -133,8 +133,8 @@ public final class YandereJealousy {
     }
 
     private static GrowthYandereAlly currentGrowthAlly() {
-        if (Dungeon.hero == null || Dungeon.hero.belongings == null || Dungeon.level == null) return null;
-        RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
+        if (Dungeon.hero == null || Dungeon.level == null) return null;
+        RedRibbon ribbon = RedRibbon.findRibbonForRun();
         if (ribbon == null || !ribbon.isGrowthProfile()) return null;
         YandereAlly found = ribbon.findAlly();
         return found instanceof GrowthYandereAlly && found.isAlive()
