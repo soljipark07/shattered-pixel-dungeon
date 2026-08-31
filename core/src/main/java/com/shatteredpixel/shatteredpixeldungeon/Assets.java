@@ -139,7 +139,7 @@ public class Assets {
 		public static final String CITY_2               = "music/city_2.ogg";
 		public static final String CITY_3               = "music/city_3.ogg";
 		public static final String CITY_TENSE           = "music/city_tense.ogg";
-		public static final String CITY_BOSS            = "music/city_boss.ogg";
+		public static final String CITY_BOSS            = "music/city_boss.mp3";
 		public static final String CITY_BOSS_FINALE     = "music/city_boss_finale.ogg";
 
 		public static final String HALLS_1              = "music/halls_1.ogg";
@@ -221,6 +221,7 @@ public class Assets {
 		public static final String SCAN     = "sounds/scan.mp3";
 		public static final String SHEEP    = "sounds/sheep.mp3";
 		public static final String MINE     = "sounds/mine.mp3";
+		public static final String YANDERE_LAUGH_MILD = "sounds/yandere_laugh_mild.mp3";
 		public static final String YANDERE_LAUGH_HIGH = "sounds/yandere_laugh_high.mp3";
 
 		public static final String[] all = new String[]{
@@ -235,7 +236,7 @@ public class Assets {
 				CHALLENGE, CURSED, TRAP, EVOKE, TOMB, ALERT, MELD, BOSS, BLAST, PLANT, RAY, BEACON,
 				TELEPORT, CHARMS, MASTERY, PUFF, ROCKS, BURNING, FALLING, GHOST, SECRET, BONES,
 				BEE, DEGRADE, MIMIC, DEBUFF, CHARGEUP, GAS, CHAINS, SCAN, SHEEP, MINE,
-				YANDERE_LAUGH_HIGH
+				YANDERE_LAUGH_MILD, YANDERE_LAUGH_HIGH
 		};
 	}
 
