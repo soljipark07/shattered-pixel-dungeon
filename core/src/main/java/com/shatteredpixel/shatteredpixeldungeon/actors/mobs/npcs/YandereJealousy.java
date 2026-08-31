@@ -151,33 +151,53 @@ public final class YandereJealousy {
     }
 
     private static boolean reactNpcInteraction(GrowthYandereAlly ally, Char target, int count) {
+        int tier = ally.obsessionStage();
         if (count >= GENERAL_KILL) {
-            ally.yell("말했지. 다음은 없다고. 이제 쟤 없어.");
+            ally.yell(tier >= 4
+                    ? "얘가 날 사랑하는 건 이미 알아♡ 근데 네가 왜 자꾸 옆에 붙어 있어? 이제 그만 없어져."
+                    : tier >= 3 ? "말했지! 나 다 세고 있다고! 이제 쟤 없어!"
+                    : "말했지. 다음은 없다고. 이제 쟤 없어.");
             executeJealousKill(ally, target);
             return true;
         }
         if (count >= GENERAL_WARNING) {
-            ally.yell("한 번만 더 쟤한테 가 봐. 그땐 나 진짜 안 참아.");
+            ally.yell(tier >= 4
+                    ? "나 불안한 건 아니야♡ 그냥 내 사람한테 계속 붙는 네가 거슬리는 거야. 한 번만 더 해 봐."
+                    : tier >= 3 ? "아까부터 계속 쟤한테 말 걸고 있잖아. 나 다 세고 있어. 한 번만 더 해봐."
+                    : "한 번만 더 쟤한테 가 봐. 그땐 나 진짜 안 참아.");
         } else if (count >= GENERAL_STRONG) {
-            ally.yell("그만 좀 쳐다봐. 계속 그러면 쟤가 없어지는 게 더 편하겠네.");
+            ally.yell(tier >= 4
+                    ? "얘가 누구를 사랑하는지는 이미 정해졌어♡ 그런데 넌 왜 아직도 옆에 있어?"
+                    : tier >= 3 ? "또 쟤야? 나 지금 몇 번째인지 다 기억하고 있어. 계속 해 봐."
+                    : "그만 좀 쳐다봐. 계속 그러면 쟤가 없어지는 게 더 편하겠네.");
         } else {
-            ally.yell(count == 1
-                    ? "왜 또 쟤랑 얘기해? 나 여기 있는데."
+            ally.yell(tier >= 3
+                    ? "또 쟤한테 가? 나 보고 있는데도? 진짜 기분 더럽네."
+                    : count == 1 ? "왜 또 쟤랑 얘기해? 나 여기 있는데."
                     : "또 쟤야? 나 보고도 굳이 쟤한테 가야 해?");
         }
         return false;
     }
 
     private static boolean reactShopInteraction(GrowthYandereAlly ally, Shopkeeper target, int count) {
+        int tier = ally.obsessionStage();
         if (count >= GENERAL_KILL) {
-            ally.yell("됐어. 이제 가게도, 저 사람도 필요 없어.");
+            ally.yell(tier >= 4
+                    ? "물건은 없어도 돼♡ 네 옆에 저 사람은 더 필요 없고."
+                    : tier >= 3 ? "됐어! 가게째 없어져. 이제 저 사람한테 갈 일도 없겠네."
+                    : "됐어. 이제 가게도, 저 사람도 필요 없어.");
             executeJealousKill(ally, target);
             return true;
         }
         if (count >= GENERAL_WARNING) {
-            ally.yell("한 번만 더 저 사람한테 가 봐. 그땐 가게째 없애버릴 거야.");
+            ally.yell(tier >= 3
+                    ? "또 저 사람한테 가 봐. 몇 번째인지 다 세고 있어. 가게째 없애버릴 거야."
+                    : "한 번만 더 저 사람한테 가 봐. 그땐 가게째 없애버릴 거야.");
         } else if (count >= GENERAL_STRONG) {
-            ally.yell("필요한 것만 사고 와. 계속 저 사람이랑 붙어 있으면 나 진짜 화나.");
+            ally.yell(tier >= 4
+                    ? "필요한 건 내가 다 해줄 수 있어♡ 저 사람한테 그렇게 자주 갈 이유 없잖아."
+                    : tier >= 3 ? "필요한 것만 사고 당장 와. 왜 자꾸 저 사람 앞에 서 있는데?"
+                    : "필요한 것만 사고 와. 계속 저 사람이랑 붙어 있으면 나 진짜 화나.");
         } else {
             ally.yell(count == 1
                     ? "물건만 사고 와. 왜 자꾸 저 사람이랑 말 섞어?"
@@ -187,17 +207,23 @@ public final class YandereJealousy {
     }
 
     private static boolean reactRoseInteraction(GrowthYandereAlly ally, Char target, int count) {
+        int tier = ally.obsessionStage();
         if (count >= ROSE_KILL) {
-            ally.yell("됐어. 이제 걔 없어. 나만 보면 돼.");
+            ally.yell(tier >= 4
+                    ? "걔가 네 옆에 있을 이유 없잖아♡ 이제 진짜 나만 보면 돼."
+                    : "됐어! 걔 보기 싫다고 했잖아! 이제 없어. 나만 봐!");
             executeJealousKill(ally, target);
             return true;
         }
         if (count >= ROSE_WARNING) {
-            ally.yell("다음에도 걔부터 찾으면, 내가 직접 없앨 거야.");
-        } else if (count >= ROSE_THREAT) {
-            ally.yell("또 걔야? 하지 마. 진짜로. 걔 보기 싫어.");
+            ally.yell(tier >= 3
+                    ? "또 걔부터 찾으면 내가 직접 없앨 거야. 장난 아니야. 진짜 죽여버릴 거야."
+                    : "다음에도 걔부터 찾으면, 내가 직접 없앨 거야.");
         } else {
-            ally.yell("걔랑 왜 그렇게 붙어 있어? 나 싫어.");
+            ally.yell(tier >= 4
+                    ? "얘가 날 사랑하는 건 이미 알아♡ 근데 쟤가 왜 네 옆에 붙어 있어?"
+                    : tier >= 3 ? "또 걔야?! 걔 보기 싫다고! 지금 당장 떨어져!"
+                    : "또 걔야? 하지 마. 진짜로. 걔 보기 싫어.");
         }
         return false;
     }

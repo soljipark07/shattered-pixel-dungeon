@@ -29,9 +29,11 @@ public class RedRibbon extends Item {
 
     private static final float ABANDONMENT_DAMAGE_MULTIPLIER = 0.80f;
     private static final float ABANDONMENT_ATTACK_SPEED_MULTIPLIER = 0.80f;
+    private static final float ABANDONMENT_MOVE_SPEED_MULTIPLIER = 0.80f;
     private static final float ABANDONMENT_STAGE_1 = 30f;
     private static final float ABANDONMENT_STAGE_2 = 80f;
     private static final float ABANDONMENT_STAGE_3 = 150f;
+    private static final float ABANDONMENT_STAGE_4 = 220f;
     
     private int allyID = 0;
     private boolean summoned = false;
@@ -41,6 +43,7 @@ public class RedRibbon extends Item {
 
     private boolean abandonmentActive = false;
     private float abandonmentStartClock = -1f;
+    private float abandonmentNextChatterClock = -1f;
     private int abandonmentStage = -1;
     
     private int lastHeartWarningDepth = Integer.MIN_VALUE;
@@ -105,6 +108,7 @@ public class RedRibbon extends Item {
         if (bonded) {
             abandonmentActive = true;
             abandonmentStartClock = globalCurseClock();
+            abandonmentNextChatterClock = abandonmentStartClock + ABANDONMENT_STAGE_1;
             abandonmentStage = 0;
             speakAbandonmentLine(0);
         }
@@ -153,6 +157,10 @@ public class RedRibbon extends Item {
         return abandonmentCurseActive(hero) ? 1f / ABANDONMENT_ATTACK_SPEED_MULTIPLIER : 1f;
     }
 
+    public static float abandonmentMoveSpeedMultiplier(Hero hero) {
+        return abandonmentCurseActive(hero) ? ABANDONMENT_MOVE_SPEED_MULTIPLIER : 1f;
+    }
+
     private static RedRibbon findFloorRibbon() {
         if (Dungeon.level == null || Dungeon.level.heaps == null) return null;
         for (Heap heap : Dungeon.level.heaps.valueList()) {
@@ -174,36 +182,114 @@ public class RedRibbon extends Item {
         return Statistics.duration + Actor.now();
     }
 
+    private float abandonmentRepeatInterval(int stage) {
+        switch (stage) {
+            case 4: return 25f;
+            case 3: return 35f;
+            case 2: return 45f;
+            case 1: return 55f;
+            default: return 70f;
+        }
+    }
+
+    private int abandonmentObsessionStage() {
+        if (!isGrowthProfile()) return 0;
+        if (growthHearts >= 48) return 4;
+        if (growthHearts >= 36) return 3;
+        if (growthHearts >= 24) return 2;
+        if (growthHearts >= 12) return 1;
+        return 0;
+    }
+
     private void updateAbandonmentCurse() {
         if (!abandonmentActive || !isBonded()) return;
-        float elapsed = Math.max(0f, globalCurseClock() - abandonmentStartClock);
+        float now = globalCurseClock();
+        float elapsed = Math.max(0f, now - abandonmentStartClock);
         int stage = 0;
-        if (elapsed >= ABANDONMENT_STAGE_3) stage = 3;
+        if (elapsed >= ABANDONMENT_STAGE_4) stage = 4;
+        else if (elapsed >= ABANDONMENT_STAGE_3) stage = 3;
         else if (elapsed >= ABANDONMENT_STAGE_2) stage = 2;
         else if (elapsed >= ABANDONMENT_STAGE_1) stage = 1;
+
         if (stage > abandonmentStage) {
             abandonmentStage = stage;
             speakAbandonmentLine(stage);
+            abandonmentNextChatterClock = now + abandonmentRepeatInterval(stage);
+        } else if (stage > 0 && abandonmentNextChatterClock >= 0f && now >= abandonmentNextChatterClock) {
+            speakAbandonmentLine(stage);
+            abandonmentNextChatterClock = now + abandonmentRepeatInterval(stage);
         }
     }
 
     private void stopAbandonmentCurse(boolean speak) {
         abandonmentActive = false;
         abandonmentStartClock = -1f;
+        abandonmentNextChatterClock = -1f;
         abandonmentStage = -1;
         if (!speak) return;
         YandereAlly ally = findAlly();
-        if (ally != null && ally.isAlive()) ally.yell("다시는 버리지 마. 알았지?♡");
-        else GLog.i("붉은 리본을 다시 주웠다. 싸늘하던 기운이 가라앉았다.");
+        String line = "아하하! 주웠다♡ 그치? 실수였지? 나 버릴 리가 없잖아. 그치? 그치?♡";
+        if (ally != null && ally.isAlive()) ally.yell(line);
+        else GLog.i(line);
     }
 
     private void speakAbandonmentLine(int stage) {
+        int obsession = abandonmentObsessionStage();
         String line;
-        switch (stage) {
-            case 3: line = "계속 두고 가 봐. 네가 싸울 때마다 내가 얼마나 싫은지 느끼게 해줄게."; break;
-            case 2: line = "나 버린 거 아니지? 아니라고 해. 지금 와서 주워."; break;
-            case 1: line = "주워. 나 여기 있잖아. 왜 그냥 가?"; break;
-            default: line = "버리지 마."; break;
+
+        if (obsession >= 4) {
+            switch (stage) {
+                case 4:
+                case 3: line = "아하하하하♡ 또 버렸네? 그래, 도망가 봐. 다음 층에서도 네 옆에 있을 테니까."; break;
+                case 2: line = "도망갈 생각 하는 거야? 아하하♡ 해 봐. 얼마나 멀리 가나 보자."; break;
+                case 1: line = "또 안 줍네♡ 그래도 괜찮아. 네가 어디 가든 내가 따라갈 거니까."; break;
+                default: line = "또 버렸네? 장난이지? 주워♡ 네가 나 버릴 리 없다는 거 알아."; break;
+            }
+        } else if (obsession >= 3) {
+            switch (stage) {
+                case 4: line = "버리지 마! 버리지 마! 버리지 마! 씨발, 나 좀 버리지 말라고!!"; break;
+                case 3: line = "주워! 지금 당장 주우라고! 나 버리고 어디 가려고 하는데? 네가 어디까지 가든 내가 따라갈 거야!"; break;
+                case 2: line = "버리지 마. 버리지 말라고. 내가 몇 번을 말해야 알아들어?"; break;
+                case 1: line = "주우라고 했잖아. 왜 말을 안 들어? 내가 지금 장난하는 것 같아?"; break;
+                default: line = "왜 버렸어? 빨리 주워. 나 싫어서 그런 거 아니지?"; break;
+            }
+        } else if (obsession >= 2) {
+            switch (stage) {
+                case 4: line = "버리지 마! 나 진짜 미칠 것 같아! 왜 나를 계속 버려!"; break;
+                case 3: line = "주워. 지금 당장 주워. 나 버리고 혼자 갈 생각 하지 마. 절대 못 가."; break;
+                case 2: line = "버리지 마. 버리지 말라고. 내가 몇 번을 말해야 알아들어?"; break;
+                case 1: line = "주우라고 했잖아. 왜 말을 안 들어? 내가 지금 장난하는 것 같아?"; break;
+                default: line = "왜 버렸어? 빨리 주워. 나 싫어서 그런 거 아니지?"; break;
+            }
+        } else if (obsession >= 1) {
+            switch (stage) {
+                case 4: line = "나 두고 가지 마! 나 버리지 말라고 했잖아! 돌아와서 주워!"; break;
+                case 3: line = "나 버리고 혼자 갈 생각 하지 마. 진짜 싫어. 지금 주워."; break;
+                case 2: line = "나 버린 거 아니지? 아니라고 해. 빨리 주워."; break;
+                case 1: line = "왜 아직도 안 주워? 나 여기 있잖아. 나 좀 봐줘."; break;
+                default: line = "왜 버렸어? 빨리 주워. 나 싫어서 그런 거 아니지?"; break;
+            }
+        } else {
+            switch (stage) {
+                case 4: line = "나 진짜 무서워. 나 버리지 마. 돌아와서 주워."; break;
+                case 3: line = "버리지 마. 나 두고 가지 마. 지금 주워."; break;
+                case 2: line = "나 버린 거 아니지? 아니라고 해. 주워."; break;
+                case 1: line = "나 여기 있잖아. 왜 그냥 가? 빨리 주워."; break;
+                default: line = "왜 버렸어? 빨리 주워. 나 싫어서 그런 거 아니지?"; break;
+            }
+        }
+
+        YandereAlly ally = findAlly();
+        if (ally != null && ally.isAlive()) ally.yell(line);
+        else GLog.w(line);
+    }
+
+    private void speakAbandonmentFloorTransferLine() {
+        String line;
+        if (abandonmentObsessionStage() >= 4) {
+            line = "아하하하하♡ 또 버렸네? 그래, 도망가 봐. 다음 층에서도 네 옆에 있을 테니까.";
+        } else {
+            line = "어디 가? 내가 못 따라올 줄 알았어? 하하하, 진짜 귀엽네. 또 버려봐. 또 도망가 봐.";
         }
         YandereAlly ally = findAlly();
         if (ally != null && ally.isAlive()) ally.yell(line);
@@ -496,6 +582,7 @@ public class RedRibbon extends Item {
         if (Dungeon.hero == null || Dungeon.level == null) return;
         RedRibbon carried = Dungeon.hero.belongings.getItem(RedRibbon.class);
         RedRibbon ribbon = carried;
+        boolean followedAcrossFloor = false;
         if (ribbon == null) {
             RibbonTransit transit = Dungeon.hero.buff(RibbonTransit.class);
             if (transit != null && transit.ribbon != null) {
@@ -504,7 +591,7 @@ public class RedRibbon extends Item {
                 if (cell >= 0) {
                     Heap heap = Dungeon.level.drop(ribbon, cell);
                     if (heap.sprite != null) heap.sprite.drop(Dungeon.hero.pos);
-                    GLog.w("버린 붉은 리본이 계단 근처까지 따라왔다.");
+                    followedAcrossFloor = ribbon.abandonmentActive;
                 }
             } else {
                 ribbon = findFloorRibbon();
@@ -513,10 +600,18 @@ public class RedRibbon extends Item {
         if (ribbon == null) return;
         if (carried != null && ribbon.abandonmentActive) ribbon.stopAbandonmentCurse(false);
         ribbon.updateAbandonmentCurse();
-        if (!ribbon.summoned) return;
+        if (!ribbon.summoned) {
+            if (followedAcrossFloor) ribbon.speakAbandonmentFloorTransferLine();
+            return;
+        }
         YandereAlly ally = ribbon.findAlly();
-        if (ally == null) ribbon.createOnCurrentFloor(Dungeon.hero, false);
-        else ribbon.captureFrom(ally);
+        if (ally == null) {
+            ribbon.createOnCurrentFloor(Dungeon.hero, false);
+            ally = ribbon.findAlly();
+        } else {
+            ribbon.captureFrom(ally);
+        }
+        if (followedAcrossFloor) ribbon.speakAbandonmentFloorTransferLine();
     }
 
     public static void onYandereDied(YandereAlly ally) {
@@ -665,6 +760,7 @@ public class RedRibbon extends Item {
     private static final String SAVED_GROWTH_HP = "lab3_yandere_saved_growth_hp";
     private static final String ABANDONMENT_ACTIVE = "lab3_yandere_abandonment_active";
     private static final String ABANDONMENT_AGE = "lab3_yandere_abandonment_age";
+    private static final String ABANDONMENT_NEXT_CHATTER = "lab3_yandere_abandonment_next_chatter";
     private static final String ABANDONMENT_STAGE = "lab3_yandere_abandonment_stage";
 
     public static class RibbonTransit extends Buff {
@@ -716,6 +812,8 @@ public class RedRibbon extends Item {
         bundle.put(ABANDONMENT_ACTIVE, abandonmentActive);
         bundle.put(ABANDONMENT_AGE, abandonmentActive && abandonmentStartClock >= 0f
                 ? Math.max(0f, globalCurseClock() - abandonmentStartClock) : 0f);
+        bundle.put(ABANDONMENT_NEXT_CHATTER, abandonmentActive && abandonmentNextChatterClock >= 0f
+                ? Math.max(0f, abandonmentNextChatterClock - globalCurseClock()) : 0f);
         bundle.put(ABANDONMENT_STAGE, abandonmentStage);
     }
 
@@ -737,7 +835,12 @@ public class RedRibbon extends Item {
         abandonmentActive = bundle.contains(ABANDONMENT_ACTIVE) && bundle.getBoolean(ABANDONMENT_ACTIVE);
         float abandonmentAge = bundle.contains(ABANDONMENT_AGE) ? Math.max(0f, bundle.getFloat(ABANDONMENT_AGE)) : 0f;
         abandonmentStartClock = abandonmentActive ? globalCurseClock() - abandonmentAge : -1f;
+        float abandonmentNext = bundle.contains(ABANDONMENT_NEXT_CHATTER)
+                ? Math.max(0f, bundle.getFloat(ABANDONMENT_NEXT_CHATTER)) : 0f;
         abandonmentStage = bundle.contains(ABANDONMENT_STAGE) ? bundle.getInt(ABANDONMENT_STAGE) : -1;
+        abandonmentNextChatterClock = abandonmentActive
+                ? globalCurseClock() + (abandonmentNext > 0f ? abandonmentNext : abandonmentRepeatInterval(Math.max(0, abandonmentStage)))
+                : -1f;
 
         if (bundle.contains(PROFILE_LOCKED)) profileLocked = bundle.getBoolean(PROFILE_LOCKED);
         else {

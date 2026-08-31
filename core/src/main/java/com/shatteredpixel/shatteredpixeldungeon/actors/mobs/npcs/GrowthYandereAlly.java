@@ -58,6 +58,7 @@ public class GrowthYandereAlly extends YandereAlly {
     private static final float FINAL_DEFENSE_MULTIPLIER = 1.30f;
 
     private static final float HIGH_LAUGH_COOLDOWN = 70f;
+    private static final float KILL_LAUGH_COOLDOWN = 12f;
 
     private static final int DIALOGUE_OTHER = 0;
     private static final int DIALOGUE_GENERIC = 1;
@@ -70,6 +71,7 @@ public class GrowthYandereAlly extends YandereAlly {
     private float lastRegenClock = -1f;
     private int lastInterceptRollTurn = Integer.MIN_VALUE;
     private float lastHighLaughClock = -999999f;
+    private float lastKillLaughClock = -999999f;
     private final HashSet<Integer> warnedNearbySecretDoors = new HashSet<>();
     private final HashSet<Integer> warnedSecretRooms = new HashSet<>();
     private int lastRoomSignature = Integer.MIN_VALUE;
@@ -128,7 +130,9 @@ public class GrowthYandereAlly extends YandereAlly {
         if (isFullyAwakened()) {
             normalizeFinalAwakeningState();
             if (!wasFullyAwakened) {
-                yell("사랑해사랑해사랑해♡ 이제 됐어. 이제 아무것도 부족하지 않아.");
+                Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);
+                lastHighLaughClock = globalGrowthClock();
+                yell("사랑해. 사랑해 사랑해 사랑해 사랑해♡ 아하하하하하! 나도 알아! 이제 알아! 너도 나 사랑하는 거잖아!!");
             }
         }
     }
@@ -523,7 +527,7 @@ public class GrowthYandereAlly extends YandereAlly {
                 "잠깐. 근처에 함정 있어. 밟지 마.",
                 "여기 뭔가 숨겨져 있어♡ 이 방, 그냥 지나가면 안 될 것 같아.",
                 "불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.",
-                "사랑해사랑해사랑해♡ 이제 됐어. 이제 아무것도 부족하지 않아.")) return DIALOGUE_OTHER;
+                "사랑해. 사랑해 사랑해 사랑해 사랑해♡ 아하하하하하! 나도 알아! 이제 알아! 너도 나 사랑하는 거잖아!!")) return DIALOGUE_OTHER;
 
         if (text.contains("영원히 못 떠나게") || text.contains("이번엔 내가 하고 싶은 대로")
                 || text.contains("하트부터 줘") || text.startsWith("계단으로 도망가면")
@@ -744,15 +748,15 @@ public class GrowthYandereAlly extends YandereAlly {
 
     private String painGrowthLine(int tier, int band) {
         if (tier >= 4) return pick(
+                "아하하하하! 괜찮아♡ 내가 다 죽이면 돼. 너 건드린 것들 하나도 안 남기면 되잖아♡",
                 "누가 너 건드렸어? 말 안 해도 돼♡ 내가 찾아서 없애면 되니까.",
-                "아프지 마. 네가 다치는 건 아직도 싫어. 그건 절대 익숙해질 생각 없어.",
-                "이리 와♡ 네가 멀쩡해질 때까지 내가 전부 막을게.",
-                "너 건드린 건 기억했어♡ 이제 걔가 얼마나 버티는지만 보면 돼.");
+                "아프지 마♡ 내가 전부 없애줄게. 너는 그냥 내 옆에 있으면 돼.",
+                "너 건드린 건 기억했어♡ 이제 하나도 안 남길 거야.");
         if (tier == 3) return pick(
+                "누가 너 이렇게 만들었어?! 말해! 어디 있어?! 내가 지금 다 찢어버릴 거야!",
                 "누가 이랬어! 어디 있어! 내가 지금 바로 분질러버릴 거야!",
                 "피 봐. 네 피잖아. 헤헤, 나 진짜 화나네. 쟤부터 없앨게.",
-                "아프지 마! 너 건드린 새끼는 내가 다시는 못 움직이게 할 거야!",
-                "내가 옆에 있는데 감히 너를 이렇게 만들어? 걔 어디 있어!");
+                "아프지 마! 너 건드린 새끼는 내가 다시는 못 움직이게 할 거야!");
         if (tier == 2) return pick(
                 "이리 와. 지금은 내 옆에 있어. 널 또 다치게 두기 싫어.",
                 "누가 너 이렇게 만들었어? 걔부터 처리하고 다시 네 옆에 붙어 있을게.",
@@ -902,6 +906,33 @@ public class GrowthYandereAlly extends YandereAlly {
 
     @Override public int attackSkill(Char target) { return hostileToHero() ? 1_000_000 : growthAccuracy(); }
 
+    private void maybePlayKillLaugh(Char enemy, int dealtDamage) {
+        if (enemy == null || enemy == Dungeon.hero || !enemy.isAlive()) return;
+        if (enemy.HP - dealtDamage > 0) return;
+
+        int tier = obsessionStage();
+        float chance;
+        switch (tier) {
+            case 4: chance = 0.85f; break;
+            case 3: chance = 0.55f; break;
+            case 2: chance = 0.25f; break;
+            case 1: chance = 0.10f; break;
+            default: chance = 0.05f; break;
+        }
+        float now = globalGrowthClock();
+        if (now - lastKillLaughClock < KILL_LAUGH_COOLDOWN || Random.Float() >= chance) return;
+
+        Sample.INSTANCE.play(tier >= 3 ? Assets.Sounds.YANDERE_LAUGH_HIGH : Assets.Sounds.YANDERE_LAUGH_MILD);
+        lastKillLaughClock = now;
+    }
+
+    @Override
+    public int attackProc(Char enemy, int damage) {
+        int result = super.attackProc(enemy, damage);
+        maybePlayKillLaugh(enemy, result);
+        return result;
+    }
+
     @Override
     public int damageRoll() {
         if (hostileToHero() && Dungeon.hero != null) return Math.max(9999, Dungeon.hero.HT * 4);
@@ -946,6 +977,7 @@ public class GrowthYandereAlly extends YandereAlly {
     private static final String GROWTH_HEARTS = "lab3_growth_yandere_hearts";
     private static final String REGEN_AGE = "lab3_growth_yandere_regen_age";
     private static final String HIGH_LAUGH_AGE = "lab3_growth_yandere_high_laugh_age";
+    private static final String KILL_LAUGH_AGE = "lab3_growth_yandere_kill_laugh_age";
 
     @Override
     public void storeInBundle(Bundle bundle) {
@@ -953,9 +985,11 @@ public class GrowthYandereAlly extends YandereAlly {
         float now = globalGrowthClock();
         float regenAge = lastRegenClock < 0f ? 0f : Math.max(0f, now - lastRegenClock);
         float laughAge = lastHighLaughClock < -900000f ? HIGH_LAUGH_COOLDOWN : Math.max(0f, now - lastHighLaughClock);
+        float killLaughAge = lastKillLaughClock < -900000f ? KILL_LAUGH_COOLDOWN : Math.max(0f, now - lastKillLaughClock);
         bundle.put(GROWTH_HEARTS, growthHearts);
         bundle.put(REGEN_AGE, regenAge);
         bundle.put(HIGH_LAUGH_AGE, laughAge);
+        bundle.put(KILL_LAUGH_AGE, killLaughAge);
     }
 
     @Override
@@ -967,8 +1001,10 @@ public class GrowthYandereAlly extends YandereAlly {
         HP = Math.min(HP, HT);
         float regenAge = bundle.contains(REGEN_AGE) ? Math.max(0f, bundle.getFloat(REGEN_AGE)) : 0f;
         float laughAge = bundle.contains(HIGH_LAUGH_AGE) ? Math.max(0f, bundle.getFloat(HIGH_LAUGH_AGE)) : HIGH_LAUGH_COOLDOWN;
+        float killLaughAge = bundle.contains(KILL_LAUGH_AGE) ? Math.max(0f, bundle.getFloat(KILL_LAUGH_AGE)) : KILL_LAUGH_COOLDOWN;
         lastRegenClock = globalGrowthClock() - Math.min(REGEN_INTERVAL, regenAge);
         lastHighLaughClock = globalGrowthClock() - Math.min(HIGH_LAUGH_COOLDOWN, laughAge);
+        lastKillLaughClock = globalGrowthClock() - Math.min(KILL_LAUGH_COOLDOWN, killLaughAge);
         lastInterceptRollTurn = Integer.MIN_VALUE;
         lastHeroPosForTrapScan = Dungeon.hero == null ? -1 : Dungeon.hero.pos;
         lastRoomSignature = Integer.MIN_VALUE;

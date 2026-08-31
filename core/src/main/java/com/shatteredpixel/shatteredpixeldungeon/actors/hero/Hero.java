@@ -733,6 +733,7 @@ public class Hero extends Char {
 		}
 
 		speed = AscensionChallenge.modifyHeroSpeed(speed);
+		speed *= RedRibbon.abandonmentMoveSpeedMultiplier(this);
 		
 		return speed;
 		
