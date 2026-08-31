@@ -20,8 +20,18 @@ public class RedRibbon extends Item {
 
     private static final String AC_MANAGE = "LAB3_YANDERE_MANAGE";
 
+    public static final int PROFILE_CHEAT = 0;
+    public static final int PROFILE_GROWTH = 1;
+    public static final int MAX_GROWTH_HEARTS = 48;
+
     private int allyID = 0;
     private boolean summoned = false;
+
+    // 한 번 소환하면 해당 플레이의 얀데레 유형은 고정된다.
+    // 구버전 세이브는 기존 동작 보존을 위해 기본값이 치트형이다.
+    private int profile = PROFILE_CHEAT;
+    private boolean profileLocked = false;
+    private int growthHearts = 0;
 
     // 층 이동 때 아군 본체가 사라져도 리본이 상태를 들고 감.
     private int savedMode = YandereAlly.MODE_GUARD;
@@ -45,6 +55,8 @@ public class RedRibbon extends Item {
     @Override
     public String desc() {
         return "얀데레를 소환하고 명령하는 전용 도구다.\n\n"
+                + "첫 소환 전 치트형과 성장형 중 하나를 고를 수 있으며, 한 번 소환한 뒤에는 해당 유형으로 고정된다. "
+                + "성장형은 얀데레에게 직접 건넨 하트를 최대 48개까지 성장 하트로 기록한다.\n\n"
                 + "하트는 리본 메뉴에서 공짜로 먹이는 방식이 아니라 던전 바닥에서 직접 주워 "
                 + "얀데레에게 던져야 한다.";
     }
@@ -77,17 +89,44 @@ public class RedRibbon extends Item {
         if (AC_MANAGE.equals(action)) showMainMenu(hero);
     }
 
+    private String profileName() {
+        return profile == PROFILE_GROWTH ? "성장형" : "치트형";
+    }
+
+    public boolean isGrowthProfile() {
+        return profile == PROFILE_GROWTH;
+    }
+
+    public int profile() {
+        return profile;
+    }
+
+    public int growthHearts() {
+        return growthHearts;
+    }
+
+    public boolean recordGrowthHeart() {
+        if (!isGrowthProfile() || growthHearts >= MAX_GROWTH_HEARTS) return false;
+        growthHearts++;
+        return true;
+    }
+
     private void showMainMenu(final Hero hero) {
         final YandereAlly ally = findAlly();
 
         String summary;
+        String profileSummary = "유형: " + profileName()
+                + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "");
+
         if (ally == null) {
-            summary = summoned
+            summary = profileSummary + "\n"
+                    + (summoned
                     ? "얀데레가 현재 층에 없다.\n다음 영웅 행동 때 자동으로 따라온다."
-                    : "현재 소환된 얀데레: 없음";
+                    : "현재 소환된 얀데레: 없음");
         } else {
             captureFrom(ally);
-            summary = "태세: " + ally.modeName()
+            summary = profileSummary
+                    + "\n태세: " + ally.modeName()
                     + "\n광란도: " + ally.rage() + "/100"
                     + "\n감정: " + ally.emotionName()
                     + (ally.hostileToHero() ? "\n\n경고: 현재 주인공을 추격 중!" : "");
@@ -101,6 +140,7 @@ public class RedRibbon extends Item {
                 "상태 보기",
                 "태세 변경",
                 "대화하기",
+                "유형 선택/보기",
                 "테스트/밸런스"
         ) {
             @Override
@@ -110,9 +150,44 @@ public class RedRibbon extends Item {
                     case 1: showStatus(); break;
                     case 2: showModeMenu(); break;
                     case 3: doTalk(); break;
-                    case 4: showDebugMenu(); break;
+                    case 4: showProfileMenu(); break;
+                    case 5: showDebugMenu(); break;
                     default: break;
                 }
+            }
+        });
+    }
+
+    private void showProfileMenu() {
+        if (profileLocked) {
+            String text = "현재 유형: " + profileName()
+                    + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "")
+                    + "\n\n첫 소환이 끝난 뒤에는 이 플레이에서 유형을 바꿀 수 없어.";
+            GameScene.show(new WndOptions("얀데레 유형", text, "닫기"));
+            return;
+        }
+
+        GameScene.show(new WndOptions(
+                "얀데레 유형",
+                "첫 소환 전에만 선택할 수 있어.\n\n"
+                        + "치트형은 지금까지의 초강력 실험용 얀데레를 유지한다.\n"
+                        + "성장형은 하트를 최대 48개까지 먹이며 성장하는 정식 플레이용 유형이다.\n\n"
+                        + "현재 선택: " + profileName(),
+                "치트형",
+                "성장형"
+        ) {
+            @Override
+            protected void onSelect(int index) {
+                if (index == 0) {
+                    profile = PROFILE_CHEAT;
+                    growthHearts = 0;
+                    GLog.i("얀데레 유형을 치트형으로 선택했어.");
+                } else if (index == 1) {
+                    profile = PROFILE_GROWTH;
+                    growthHearts = 0;
+                    GLog.i("얀데레 유형을 성장형으로 선택했어. 첫 소환 뒤에는 바꿀 수 없어.");
+                }
+                Item.updateQuickslot();
             }
         });
     }
@@ -221,6 +296,7 @@ public class RedRibbon extends Item {
             return;
         }
 
+        profileLocked = true;
         ally.pos = cell;
         allyID = ally.id();
 
@@ -248,6 +324,7 @@ public class RedRibbon extends Item {
         savedHostile = ally.hostileToHero();
         allyID = ally.id();
         summoned = true;
+        profileLocked = true;
     }
 
     public static void beforeTransition() {
@@ -285,6 +362,7 @@ public class RedRibbon extends Item {
         ribbon.allyID = 0;
         ribbon.savedHostile = false;
         ribbon.savedRage = 0;
+        ribbon.profileLocked = true;
         if (ally != null) {
             ribbon.savedMode = ally.mode();
             ribbon.savedEffectiveHearts = ally.effectiveHearts();
@@ -296,9 +374,12 @@ public class RedRibbon extends Item {
         YandereAlly ally = findAlly();
 
         if (ally == null) {
-            String text = summoned
+            String text = "유형: " + profileName()
+                    + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "")
+                    + "\n\n"
+                    + (summoned
                     ? "층 이동 직후라면 영웅이 한 번 행동하면 자동으로 따라온다."
-                    : "현재 소환된 얀데레가 없어.";
+                    : "현재 소환된 얀데레가 없어.");
             GameScene.show(new WndOptions("얀데레 상태", text, "닫기"));
             return;
         }
@@ -306,7 +387,9 @@ public class RedRibbon extends Item {
         captureFrom(ally);
 
         String text =
-                "태세: " + ally.modeName()
+                "유형: " + profileName()
+                + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "")
+                + "\n태세: " + ally.modeName()
                 + "\n감정: " + ally.emotionName()
                 + "\n광란도: " + ally.rage() + "/100"
                 + "\nHP: " + ally.HP + "/" + ally.HT
@@ -331,7 +414,7 @@ public class RedRibbon extends Item {
                 + "\n그 뒤 얀데레 행동마다 붕괴 확률 " + Math.round(YandereAlly.SNAP_CHANCE_PER_ACT * 100) + "%"
                 + (ally.rage() >= 100 && !ally.hostileToHero()
                     ? "\n현재 한계 상태 경과: " + ally.turnsAtLimit() + "턴" : "")
-                + "\n\n※ 유효 하트는 다음 성장/능력 해금 버전을 위해 미리 기록한다.";
+                + "\n\n※ 성장형의 성장 하트는 받은 하트/유효 하트와 별도로 0~48에서 관리한다.";
 
         GameScene.show(new WndOptions("얀데레 상태", text, "닫기"));
     }
@@ -419,6 +502,9 @@ public class RedRibbon extends Item {
 
     private static final String ALLY_ID = "lab3_yandere_ally_id";
     private static final String SUMMONED = "lab3_yandere_summoned";
+    private static final String PROFILE = "lab3_yandere_profile";
+    private static final String PROFILE_LOCKED = "lab3_yandere_profile_locked";
+    private static final String GROWTH_HEARTS = "lab3_yandere_growth_hearts";
     private static final String SAVED_MODE = "lab3_yandere_saved_mode";
     private static final String SAVED_RAGE = "lab3_yandere_saved_rage";
     private static final String SAVED_EFFECTIVE = "lab3_yandere_saved_effective_hearts";
@@ -433,6 +519,9 @@ public class RedRibbon extends Item {
         super.storeInBundle(bundle);
         bundle.put(ALLY_ID, allyID);
         bundle.put(SUMMONED, summoned);
+        bundle.put(PROFILE, profile);
+        bundle.put(PROFILE_LOCKED, profileLocked);
+        bundle.put(GROWTH_HEARTS, growthHearts);
         bundle.put(SAVED_MODE, savedMode);
         bundle.put(SAVED_RAGE, savedRage);
         bundle.put(SAVED_EFFECTIVE, savedEffectiveHearts);
@@ -445,10 +534,23 @@ public class RedRibbon extends Item {
         super.restoreFromBundle(bundle);
         if (bundle.contains(ALLY_ID)) allyID = bundle.getInt(ALLY_ID);
         if (bundle.contains(SUMMONED)) summoned = bundle.getBoolean(SUMMONED);
+        if (bundle.contains(PROFILE)) profile = bundle.getInt(PROFILE);
+        if (bundle.contains(GROWTH_HEARTS)) {
+            growthHearts = Math.max(0, Math.min(MAX_GROWTH_HEARTS, bundle.getInt(GROWTH_HEARTS)));
+        }
         if (bundle.contains(SAVED_MODE)) savedMode = bundle.getInt(SAVED_MODE);
         if (bundle.contains(SAVED_RAGE)) savedRage = bundle.getInt(SAVED_RAGE);
         if (bundle.contains(SAVED_EFFECTIVE)) savedEffectiveHearts = bundle.getInt(SAVED_EFFECTIVE);
         if (bundle.contains(SAVED_TOTAL)) savedTotalHearts = bundle.getInt(SAVED_TOTAL);
         if (bundle.contains(SAVED_HOSTILE)) savedHostile = bundle.getBoolean(SAVED_HOSTILE);
+
+        if (bundle.contains(PROFILE_LOCKED)) {
+            profileLocked = bundle.getBoolean(PROFILE_LOCKED);
+        } else {
+            // 구버전 세이브는 기존 치트형으로 취급하고, 이미 소환/성장 기록이 있다면 유형을 고정한다.
+            profile = PROFILE_CHEAT;
+            profileLocked = summoned || savedTotalHearts > 0;
+            growthHearts = 0;
+        }
     }
 }
