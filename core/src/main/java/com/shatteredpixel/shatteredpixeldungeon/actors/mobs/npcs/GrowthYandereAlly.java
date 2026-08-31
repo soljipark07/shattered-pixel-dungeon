@@ -6,8 +6,14 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.LifeLink;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel;
+import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.Point;
 import com.watabou.utils.Random;
+
+import java.util.HashSet;
 
 /**
  * 정식 플레이용 성장형 얀데레.
@@ -29,19 +35,31 @@ public class GrowthYandereAlly extends YandereAlly {
     public static final float REGEN_INTERVAL = 10f;
     public static final float BASE_REGEN_PERCENT = 0.01f;
 
-    // 4단계 전반부 해금 지점
+    // 하트 단계별 해금 지점
     public static final int HEART_GUARD_I = 3;
     public static final int HEART_REGEN_I = 6;
+    public static final int HEART_MISSED_WARNING = 9;
     public static final int HEART_GUARD_II = 12;
     public static final int HEART_LOW_HP_I = 15;
     public static final int HEART_INTERCEPT_I = 18;
     public static final int HEART_REGEN_II = 21;
+    public static final int HEART_SECRET_I = 24;
     public static final int HEART_LOW_HP_II = 33;
+    public static final int HEART_SECRET_II = 36;
     public static final int HEART_INTERCEPT_II = 39;
+    public static final int HEART_SECRET_III = 45;
+
+    private static final int SECRET_NEARBY_RANGE = 2;
 
     private int growthHearts = 0;
     private float lastRegenClock = -1f;
     private int lastInterceptRollTurn = Integer.MIN_VALUE;
+
+    // 탐색 감지는 정확한 비밀문 위치를 알려주지 않고, 같은 대상에 대사를 반복하지 않도록만 기록한다.
+    private final HashSet<Integer> warnedNearbySecretDoors = new HashSet<>();
+    private final HashSet<Integer> warnedSecretRooms = new HashSet<>();
+    private int lastRoomSignature = Integer.MIN_VALUE;
+    private int lastHeroPosForTrapScan = -1;
 
     {
         HP = HT = BASE_HP;
@@ -75,6 +93,10 @@ public class GrowthYandereAlly extends YandereAlly {
         HP = savedHP >= 0 ? Math.max(1, Math.min(HT, savedHP)) : HT;
         lastRegenClock = globalGrowthClock();
         lastInterceptRollTurn = Integer.MIN_VALUE;
+        lastHeroPosForTrapScan = Dungeon.hero == null ? -1 : Dungeon.hero.pos;
+        lastRoomSignature = Integer.MIN_VALUE;
+        warnedNearbySecretDoors.clear();
+        warnedSecretRooms.clear();
     }
 
     public void syncGrowthHearts(int hearts) {
@@ -150,6 +172,17 @@ public class GrowthYandereAlly extends YandereAlly {
         if (growthHearts >= HEART_INTERCEPT_II) return 2;
         if (growthHearts >= HEART_INTERCEPT_I) return 1;
         return 0;
+    }
+
+    public int secretSenseStage() {
+        if (growthHearts >= HEART_SECRET_III) return 3;
+        if (growthHearts >= HEART_SECRET_II) return 2;
+        if (growthHearts >= HEART_SECRET_I) return 1;
+        return 0;
+    }
+
+    public boolean hasMissedHeartWarning() {
+        return growthHearts >= HEART_MISSED_WARNING;
     }
 
     private float lowHpCombatMultiplier() {
@@ -240,7 +273,7 @@ public class GrowthYandereAlly extends YandereAlly {
         // 단, 주인공이 25% 이하라 강제 보호가 켜진 경우에는 평화 명령보다 보호가 우선된다.
         if (mode() == MODE_PEACE && !emergencyProtect()) return false;
 
-        int range = interceptStage() >= 2 ? 2 : 1;
+        int range = interceptStage() >= 2 ? 3 : 1;
         if (Dungeon.level.distance(pos, Dungeon.hero.pos) > range) return false;
 
         // 전투가 아닌 상황에서 환경 피해를 대신 받는 일을 최대한 줄이기 위해
@@ -302,6 +335,95 @@ public class GrowthYandereAlly extends YandereAlly {
         }
     }
 
+    private void updateExplorationSense() {
+        if (Dungeon.level == null || Dungeon.hero == null || hostileToHero()) return;
+
+        int stage = secretSenseStage();
+        if (stage <= 0) {
+            lastHeroPosForTrapScan = Dungeon.hero.pos;
+            return;
+        }
+
+        warnNearbySecretDoors();
+
+        if (stage >= 3) {
+            warnOnSecretRoomEntry();
+        }
+
+        // 함정은 영웅이 계속 이동 중일 때 미리 밝혀주지 않는다.
+        // 얀데레가 연속 두 행동에서 같은 영웅 위치를 확인한 경우에만 '멈춰 있었다'고 본다.
+        boolean heroStayedStill = lastHeroPosForTrapScan == Dungeon.hero.pos;
+        if (stage >= 2 && heroStayedStill) {
+            revealNearbyHiddenTraps(stage >= 3 ? 3 : 2);
+        }
+        lastHeroPosForTrapScan = Dungeon.hero.pos;
+    }
+
+    private void warnNearbySecretDoors() {
+        boolean foundNew = false;
+        for (int cell = 0; cell < Dungeon.level.length(); cell++) {
+            if (Dungeon.level.map[cell] == Terrain.SECRET_DOOR
+                    && Dungeon.level.distance(Dungeon.hero.pos, cell) <= SECRET_NEARBY_RANGE
+                    && warnedNearbySecretDoors.add(cell)) {
+                foundNew = true;
+            }
+        }
+
+        if (foundNew) {
+            yell("잠깐♡ 이 근처, 뭔가 이상해. 그냥 지나가지 마.");
+        }
+    }
+
+    private void revealNearbyHiddenTraps(int range) {
+        boolean found = false;
+        for (int cell = 0; cell < Dungeon.level.length(); cell++) {
+            if (Dungeon.level.map[cell] == Terrain.SECRET_TRAP
+                    && Dungeon.level.distance(Dungeon.hero.pos, cell) <= range) {
+                Dungeon.level.discover(cell);
+                found = true;
+            }
+        }
+
+        if (found) {
+            yell("잠깐. 근처에 함정 있어. 밟지 마.");
+        }
+    }
+
+    private void warnOnSecretRoomEntry() {
+        if (!(Dungeon.level instanceof RegularLevel)) return;
+
+        Room room = ((RegularLevel)Dungeon.level).room(Dungeon.hero.pos);
+        int signature = roomSignature(room);
+        if (signature == lastRoomSignature) return;
+        lastRoomSignature = signature;
+
+        if (room == null || warnedSecretRooms.contains(signature)) return;
+
+        boolean hasSecretDoor = false;
+        for (Point point : room.getPoints()) {
+            int cell = Dungeon.level.pointToCell(point);
+            if (cell >= 0 && cell < Dungeon.level.length()
+                    && Dungeon.level.map[cell] == Terrain.SECRET_DOOR) {
+                hasSecretDoor = true;
+                break;
+            }
+        }
+
+        if (hasSecretDoor) {
+            warnedSecretRooms.add(signature);
+            yell("여기 뭔가 숨겨져 있어♡ 이 방, 그냥 지나가면 안 될 것 같아.");
+        }
+    }
+
+    private int roomSignature(Room room) {
+        if (room == null) return Integer.MIN_VALUE;
+        int result = room.left;
+        result = 31 * result + room.top;
+        result = 31 * result + room.right;
+        result = 31 * result + room.bottom;
+        return result;
+    }
+
     @Override
     protected boolean act() {
         int hpBeforeParentAct = HP;
@@ -315,6 +437,7 @@ public class GrowthYandereAlly extends YandereAlly {
         }
         updateNaturalRegen();
         updateInterceptLinks();
+        updateExplorationSense();
 
         return result;
     }
@@ -445,7 +568,7 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     public int interceptRange() {
-        if (interceptStage() >= 2) return 2;
+        if (interceptStage() >= 2) return 3;
         if (interceptStage() == 1) return 1;
         return 0;
     }
@@ -480,5 +603,9 @@ public class GrowthYandereAlly extends YandereAlly {
                 ? Math.max(0f, bundle.getFloat(REGEN_AGE)) : 0f;
         lastRegenClock = globalGrowthClock() - Math.min(REGEN_INTERVAL, regenAge);
         lastInterceptRollTurn = Integer.MIN_VALUE;
+        lastHeroPosForTrapScan = Dungeon.hero == null ? -1 : Dungeon.hero.pos;
+        lastRoomSignature = Integer.MIN_VALUE;
+        warnedNearbySecretDoors.clear();
+        warnedSecretRooms.clear();
     }
 }
