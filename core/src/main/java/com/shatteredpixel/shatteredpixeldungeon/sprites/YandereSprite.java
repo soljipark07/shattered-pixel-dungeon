@@ -36,8 +36,12 @@ public class YandereSprite extends MobSprite {
         for (int state = NORMAL; state <= HOSTILE; state++) {
             int first = state * FRAMES_PER_STATE;
 
-            idleByState[state] = new Animation(2, true);
-            idleByState[state].frames(body, first, first + 1);
+            // Match the regular human hero idle cadence: hold the base pose
+            // for several beats instead of rapidly alternating both frames.
+            idleByState[state] = new Animation(1, true);
+            idleByState[state].frames(body,
+                    first, first, first, first + 1,
+                    first, first, first + 1, first + 1);
 
             runByState[state] = new Animation(20, true);
             runByState[state].frames(body,
