@@ -9,8 +9,12 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Regrowth;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.SacrificialFire;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.StormCloud;
 import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.WellWater;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.CrystalSpire;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.DelayedRockFall;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Elemental;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.GnollGeomancer;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.GnollSapper;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Goo;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.RipperDemon;
@@ -40,6 +44,10 @@ public final class YandereDangerSense {
     private static Field yogTargetedCellsField;
     private static Field gooPumpedUpField;
     private static Field rockPositionsField;
+    private static Field crystalSpireTargetedCellsField;
+    private static Field geomancerThrowingRocksFromPosField;
+    private static Field geomancerThrowingRockToPosField;
+    private static Field newbornFireTargetingPosField;
     private static boolean reflectionPrepared = false;
 
     public static boolean dangerAt(GrowthYandereAlly ally, int cell) {
@@ -112,7 +120,13 @@ public final class YandereDangerSense {
         prepareReflection();
 
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
-            if (mob == null || !mob.isAlive() || mob.alignment != GrowthYandereAlly.Alignment.ENEMY) continue;
+            if (mob == null || !mob.isAlive()) continue;
+
+            // 수정 첨탑은 NEUTRAL이지만, 보이는 빨간 예고칸의 수정 가시는 아군도 맞는다.
+            if (mob instanceof CrystalSpire && crystalSpireThreatens((CrystalSpire)mob, cell)) return true;
+
+            // 이 아래는 실제 적대 몬스터가 예고한 공격만 취급한다.
+            if (mob.alignment != GrowthYandereAlly.Alignment.ENEMY) continue;
 
             if (mob instanceof Eye && ((Eye)mob).chargedBeamThreatens(cell)) return true;
             if (mob instanceof RipperDemon && ((RipperDemon)mob).leapThreatens(cell)) return true;
@@ -120,6 +134,10 @@ public final class YandereDangerSense {
             if (mob instanceof Tengu && tenguBombThreatens((Tengu)mob, cell)) return true;
             if (mob instanceof Goo && gooPumpThreatens((Goo)mob, ally, cell)) return true;
             if (mob instanceof YogDzewa && yogRayThreatens((YogDzewa)mob, cell)) return true;
+            if (mob instanceof GnollSapper && gnollSapperRockThrowThreatens((GnollSapper)mob, cell)) return true;
+            if (mob instanceof GnollGeomancer && gnollGeomancerRockThrowThreatens((GnollGeomancer)mob, cell)) return true;
+            if (mob instanceof Elemental.NewbornFireElemental
+                    && newbornFireballThreatens((Elemental.NewbornFireElemental)mob, cell)) return true;
 
             // DM-300뿐 아니라 같은 DelayedRockFall 기반 예고를 쓰는 몬스터를 전부 잡는다.
             for (DelayedRockFall fall : mob.buffs(DelayedRockFall.class)) {
@@ -127,6 +145,65 @@ public final class YandereDangerSense {
             }
         }
 
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean crystalSpireThreatens(CrystalSpire spire, int cell) {
+        if (crystalSpireTargetedCellsField == null) return false;
+        try {
+            ArrayList<ArrayList<Integer>> waves =
+                    (ArrayList<ArrayList<Integer>>)crystalSpireTargetedCellsField.get(spire);
+            // 실제로 지금 화면에 빨갛게 예고된 다음 한 파동만 본다.
+            // 뒤에 예약된 확장 파동까지 미리 읽으면 얀데레가 플레이어보다 먼저 아는 셈이 된다.
+            return waves != null && !waves.isEmpty()
+                    && waves.get(0) != null && waves.get(0).contains(cell);
+        } catch (IllegalAccessException ignored) {
+            return false;
+        }
+    }
+
+    private static boolean gnollSapperRockThrowThreatens(GnollSapper sapper, int cell) {
+        if (sapper.throwingRockFromPos < 0 || sapper.throwingRockToPos < 0) return false;
+        return rockThrowPathThreatens(sapper.throwingRockFromPos, sapper.throwingRockToPos, cell);
+    }
+
+    private static boolean gnollGeomancerRockThrowThreatens(GnollGeomancer geomancer, int cell) {
+        if (geomancerThrowingRocksFromPosField == null || geomancerThrowingRockToPosField == null) return false;
+        try {
+            int[] sources = (int[])geomancerThrowingRocksFromPosField.get(geomancer);
+            int target = geomancerThrowingRockToPosField.getInt(geomancer);
+            if (sources == null || target < 0) return false;
+            for (int source : sources) {
+                if (source >= 0 && rockThrowPathThreatens(source, target, cell)) return true;
+            }
+        } catch (IllegalAccessException ignored) {
+        }
+        return false;
+    }
+
+    private static boolean rockThrowPathThreatens(int source, int target, int cell) {
+        if (source < 0 || target < 0) return false;
+        Ballistica warnPath = new Ballistica(source, target, Ballistica.STOP_SOLID);
+        for (int threatened : warnPath.subPath(0, warnPath.dist)) {
+            if (threatened == cell) return true;
+        }
+        return false;
+    }
+
+    private static boolean newbornFireballThreatens(Elemental.NewbornFireElemental elemental, int cell) {
+        int target = readInt(newbornFireTargetingPosField, elemental, -1);
+        if (target < 0) return false;
+
+        // 신생 불정령이 실제로 빨갛게 표시하고 다음 턴 불을 뿌리는 3x3 비고체 칸과 동일하게 계산한다.
+        for (int off : PathFinder.NEIGHBOURS9) {
+            int threatened = target + off;
+            if (threatened < 0 || threatened >= Dungeon.level.length()
+                    || !Dungeon.level.insideMap(threatened) || Dungeon.level.solid[threatened]) {
+                continue;
+            }
+            if (threatened == cell) return true;
+        }
         return false;
     }
 
@@ -236,6 +313,30 @@ public final class YandereDangerSense {
             rockPositionsField.setAccessible(true);
         } catch (Exception ignored) {
             rockPositionsField = null;
+        }
+        try {
+            crystalSpireTargetedCellsField = CrystalSpire.class.getDeclaredField("targetedCells");
+            crystalSpireTargetedCellsField.setAccessible(true);
+        } catch (Exception ignored) {
+            crystalSpireTargetedCellsField = null;
+        }
+        try {
+            geomancerThrowingRocksFromPosField = GnollGeomancer.class.getDeclaredField("throwingRocksFromPos");
+            geomancerThrowingRocksFromPosField.setAccessible(true);
+        } catch (Exception ignored) {
+            geomancerThrowingRocksFromPosField = null;
+        }
+        try {
+            geomancerThrowingRockToPosField = GnollGeomancer.class.getDeclaredField("throwingRockToPos");
+            geomancerThrowingRockToPosField.setAccessible(true);
+        } catch (Exception ignored) {
+            geomancerThrowingRockToPosField = null;
+        }
+        try {
+            newbornFireTargetingPosField = Elemental.NewbornFireElemental.class.getDeclaredField("targetingPos");
+            newbornFireTargetingPosField.setAccessible(true);
+        } catch (Exception ignored) {
+            newbornFireTargetingPosField = null;
         }
     }
 }
