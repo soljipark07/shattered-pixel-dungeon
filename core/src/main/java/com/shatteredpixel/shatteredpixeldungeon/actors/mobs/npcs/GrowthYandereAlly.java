@@ -328,7 +328,8 @@ public class GrowthYandereAlly extends YandereAlly {
         int oldPos = pos;
         move(cell);
         spend(1f / speed());
-        return moveSprite(oldPos, pos);
+        moveSprite(oldPos, pos);
+        return true;
     }
 
     @Override
@@ -437,17 +438,13 @@ public class GrowthYandereAlly extends YandereAlly {
 
     @Override
     protected boolean act() {
-        // 30하트 이후는 당장 맞을 예고공격/위험지형 탈출이 다른 행동보다 우선한다.
         if (trySmartEmergencyDodge()) return true;
-
-        // 42하트 이후 4칸 이내의 유효 표적에게 순간이동한다. 순간이동 자체가 한 이동 행동을 소비한다.
         if (tryCombatTeleport()) return true;
 
         int hpBeforeParentAct = HP;
         boolean wasFriendly = !hostileToHero();
         boolean result = super.act();
 
-        // 부모 치트형의 act당 +100 회복만 되돌리고 성장형 자연회복을 적용한다.
         if (wasFriendly && HP > hpBeforeParentAct) HP = Math.min(HT, hpBeforeParentAct);
         updateNaturalRegen();
         updateInterceptLinks();
