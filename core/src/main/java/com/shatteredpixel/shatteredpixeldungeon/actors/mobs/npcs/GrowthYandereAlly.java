@@ -525,9 +525,9 @@ public class GrowthYandereAlly extends YandereAlly {
                 "불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.",
                 "사랑해사랑해사랑해♡ 이제 됐어. 이제 아무것도 부족하지 않아.")) return DIALOGUE_OTHER;
 
-        if (text.contains("이성") || text.contains("안 죽일게") || text.contains("도망가")
-                || text.contains("영원히 못 떠나게") || text.contains("이번엔 내가 하고 싶은 대로")
-                || text.contains("하트부터 줘")) return DIALOGUE_HOSTILE;
+        if (text.contains("영원히 못 떠나게") || text.contains("이번엔 내가 하고 싶은 대로")
+                || text.contains("하트부터 줘") || text.startsWith("계단으로 도망가면")
+                || text.startsWith("도망가 봐")) return DIALOGUE_HOSTILE;
 
         if (text.startsWith("누가 너") || text.startsWith("안 돼 안 돼") || text.startsWith("피가 왜")
                 || text.startsWith("아프지 마") || text.startsWith("너 숨 쉬어") || text.startsWith("내가 옆에 있는데")
@@ -541,8 +541,8 @@ public class GrowthYandereAlly extends YandereAlly {
                 || text.contains("나 버릇 나빠져도") || text.contains("나 아직 좋아하는 거 맞네")
                 || text.contains("역시 나 버린 거 아니었구나") || text.contains("받았어♡ 됐어")) return DIALOGUE_HEART;
 
-        if (text.contains("한계야") || text.contains("폭발") || text.contains("기분 진짜 이상해")
-                || text.contains("지금 하트 줘") || text.contains("슬슬 서운") || text.contains("계속 기다리고 있어")) {
+        if (text.contains("한계야") || text.contains("폭발 직전") || text.contains("기분 진짜 이상해")
+                || text.contains("지금 하트 줘") || text.contains("슬슬 서운") || text.startsWith("나 계속 기다리고 있어")) {
             return DIALOGUE_WARNING;
         }
 
