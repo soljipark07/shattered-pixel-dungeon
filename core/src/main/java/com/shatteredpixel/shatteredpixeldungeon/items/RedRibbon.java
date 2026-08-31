@@ -34,6 +34,10 @@ public class RedRibbon extends Item {
     private boolean profileLocked = false;
     private int growthHearts = 0;
 
+    // 9하트 이후의 '하트 놓침' 경고는 한 층에서 한 번만 출력한다.
+    private int lastHeartWarningDepth = Integer.MIN_VALUE;
+    private int lastHeartWarningBranch = Integer.MIN_VALUE;
+
     // 층 이동 때 아군 본체가 사라져도 리본이 상태를 들고 감.
     private int savedMode = YandereAlly.MODE_GUARD;
     private int savedRage = 0;
@@ -185,11 +189,15 @@ public class RedRibbon extends Item {
                     profile = PROFILE_CHEAT;
                     growthHearts = 0;
                     savedGrowthHP = -1;
+                    lastHeartWarningDepth = Integer.MIN_VALUE;
+                    lastHeartWarningBranch = Integer.MIN_VALUE;
                     GLog.i("얀데레 유형을 치트형으로 선택했어.");
                 } else if (index == 1) {
                     profile = PROFILE_GROWTH;
                     growthHearts = 0;
                     savedGrowthHP = -1;
+                    lastHeartWarningDepth = Integer.MIN_VALUE;
+                    lastHeartWarningBranch = Integer.MIN_VALUE;
                     GLog.i("얀데레 유형을 성장형으로 선택했어. 첫 소환 뒤에는 바꿀 수 없어.");
                 }
                 Item.updateQuickslot();
@@ -340,12 +348,39 @@ public class RedRibbon extends Item {
         profileLocked = true;
     }
 
+    private boolean currentFloorHasYandereHeart() {
+        if (Dungeon.level == null || Dungeon.level.heaps == null) return false;
+
+        for (Heap heap : Dungeon.level.heaps.valueList()) {
+            if (heap == null) continue;
+            for (Item item : heap.items) {
+                if (item instanceof YandereHeart) return true;
+            }
+        }
+        return false;
+    }
+
+    private void warnAboutMissedHeart(YandereAlly ally) {
+        if (!isGrowthProfile() || growthHearts < GrowthYandereAlly.HEART_MISSED_WARNING) return;
+        if (lastHeartWarningDepth == Dungeon.depth && lastHeartWarningBranch == Dungeon.branch) return;
+        if (!currentFloorHasYandereHeart()) return;
+
+        lastHeartWarningDepth = Dungeon.depth;
+        lastHeartWarningBranch = Dungeon.branch;
+
+        if (ally != null) {
+            ally.yell("잠깐. 이 층에 하트가 아직 남아 있어. 그냥 갈 거야?");
+        }
+        GLog.w("이 층에 아직 애정의 하트가 남아 있다.");
+    }
+
     public static void beforeTransition() {
         if (Dungeon.hero == null) return;
         RedRibbon ribbon = Dungeon.hero.belongings.getItem(RedRibbon.class);
         if (ribbon == null) return;
 
         YandereAlly ally = ribbon.findAlly();
+        ribbon.warnAboutMissedHeart(ally);
         if (ally != null) ribbon.captureFrom(ally);
         ribbon.allyID = 0;
     }
@@ -446,13 +481,16 @@ public class RedRibbon extends Item {
             return;
         }
 
+        final int guardRange = ally instanceof GrowthYandereAlly
+                ? ((GrowthYandereAlly)ally).guardRange() : 2;
+
         GameScene.show(new WndOptions(
                 "전투 태세",
                 "현재: " + ally.modeName()
                         + (ally.emergencyProtect()
                         ? "\n\n주인공 저체력 때문에 현재 명령보다 강제 보호가 우선된다." : ""),
                 "광폭 — 층 전체 적을 찾아가서 학살",
-                "수비 — 주인공 2칸 안의 적만 공격",
+                "수비 — 주인공 " + guardRange + "칸 안의 적만 공격",
                 "공격 금지 — 평소엔 따라오기만 함"
         ) {
             @Override
@@ -524,6 +562,8 @@ public class RedRibbon extends Item {
     private static final String PROFILE = "lab3_yandere_profile";
     private static final String PROFILE_LOCKED = "lab3_yandere_profile_locked";
     private static final String GROWTH_HEARTS = "lab3_yandere_growth_hearts";
+    private static final String HEART_WARNING_DEPTH = "lab3_yandere_heart_warning_depth";
+    private static final String HEART_WARNING_BRANCH = "lab3_yandere_heart_warning_branch";
     private static final String SAVED_MODE = "lab3_yandere_saved_mode";
     private static final String SAVED_RAGE = "lab3_yandere_saved_rage";
     private static final String SAVED_EFFECTIVE = "lab3_yandere_saved_effective_hearts";
@@ -542,6 +582,8 @@ public class RedRibbon extends Item {
         bundle.put(PROFILE, profile);
         bundle.put(PROFILE_LOCKED, profileLocked);
         bundle.put(GROWTH_HEARTS, growthHearts);
+        bundle.put(HEART_WARNING_DEPTH, lastHeartWarningDepth);
+        bundle.put(HEART_WARNING_BRANCH, lastHeartWarningBranch);
         bundle.put(SAVED_MODE, savedMode);
         bundle.put(SAVED_RAGE, savedRage);
         bundle.put(SAVED_EFFECTIVE, savedEffectiveHearts);
@@ -559,6 +601,8 @@ public class RedRibbon extends Item {
         if (bundle.contains(GROWTH_HEARTS)) {
             growthHearts = Math.max(0, Math.min(MAX_GROWTH_HEARTS, bundle.getInt(GROWTH_HEARTS)));
         }
+        if (bundle.contains(HEART_WARNING_DEPTH)) lastHeartWarningDepth = bundle.getInt(HEART_WARNING_DEPTH);
+        if (bundle.contains(HEART_WARNING_BRANCH)) lastHeartWarningBranch = bundle.getInt(HEART_WARNING_BRANCH);
         if (bundle.contains(SAVED_MODE)) savedMode = bundle.getInt(SAVED_MODE);
         if (bundle.contains(SAVED_RAGE)) savedRage = bundle.getInt(SAVED_RAGE);
         if (bundle.contains(SAVED_EFFECTIVE)) savedEffectiveHearts = bundle.getInt(SAVED_EFFECTIVE);
@@ -574,6 +618,8 @@ public class RedRibbon extends Item {
             profileLocked = summoned || savedTotalHearts > 0;
             growthHearts = 0;
             savedGrowthHP = -1;
+            lastHeartWarningDepth = Integer.MIN_VALUE;
+            lastHeartWarningBranch = Integer.MIN_VALUE;
         }
     }
 }
