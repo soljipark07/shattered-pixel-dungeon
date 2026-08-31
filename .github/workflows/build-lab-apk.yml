@@ -24,28 +24,11 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           growth = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java')
           text = growth.read_text()
-          old = '''    private void maybePlayHighLaugh(int kind, int tier, int band) {
-              if (tier < 3) return;
-              float now = globalGrowthClock();
-              if (now - lastHighLaughClock < HIGH_LAUGH_COOLDOWN) return;
-
-              float chance;
-              if (kind == DIALOGUE_HOSTILE) chance = 0.65f;
-              else if (kind == DIALOGUE_WARNING && band >= 3) chance = 0.50f;
-              else if (tier >= 4) chance = 0.20f;
-              else if (band >= 3) chance = 0.30f;
-              else chance = 0.10f;
-
-              if (Random.Float() < chance) {
-                  Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);
-                  lastHighLaughClock = now;
-              }
-          }
-          '''
-          new = '''    private void maybePlayLaugh(int kind, int tier, int band) {
+          new_method = '''    private void maybePlayLaugh(int kind, int tier, int band) {
               float now = globalGrowthClock();
               if (now - lastHighLaughClock < HIGH_LAUGH_COOLDOWN) return;
 
@@ -72,16 +55,15 @@ jobs:
                   Sample.INSTANCE.play(laughSound);
                   lastHighLaughClock = now;
               }
-          }
-          '''
-          if old not in text:
-              raise SystemExit('old laugh method not found')
-          text = text.replace(old, new, 1)
+          }'''
+          pattern = r'    private void maybePlayHighLaugh\(int kind, int tier, int band\) \{.*?\n    \}\n\n    @Override\n    public void yell'
+          text, count = re.subn(pattern, new_method + '\n\n    @Override\n    public void yell', text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'laugh method replacements: {count}')
           old_call = '        maybePlayHighLaugh(kind, tier, band);'
-          new_call = '        maybePlayLaugh(kind, tier, band);'
           if old_call not in text:
               raise SystemExit('old laugh call not found')
-          text = text.replace(old_call, new_call, 1)
+          text = text.replace(old_call, '        maybePlayLaugh(kind, tier, band);', 1)
           growth.write_text(text)
 
           assets = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Assets.java')
