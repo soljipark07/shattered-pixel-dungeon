@@ -4,12 +4,20 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.Statistics;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Actor;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
+import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Blob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.CorrosiveGas;
+import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.Fire;
+import com.shatteredpixel.shatteredpixeldungeon.actors.blobs.ToxicGas;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.LifeLink;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Eye;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.RipperDemon;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfTeleportation;
 import com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.PathFinder;
 import com.watabou.utils.Point;
 import com.watabou.utils.Random;
 
@@ -17,9 +25,7 @@ import java.util.HashSet;
 
 /**
  * 정식 플레이용 성장형 얀데레.
- *
- * AI/광란/대화 구조는 YandereAlly를 그대로 공유하고, 성장형 전용 전투 능력과
- * 하트 단계별 해금을 이 클래스에서 덮어쓴다.
+ * AI/광란/대화 구조는 YandereAlly를 공유하고 성장형 전용 성장과 해금을 덮어쓴다.
  */
 public class GrowthYandereAlly extends YandereAlly {
 
@@ -44,18 +50,21 @@ public class GrowthYandereAlly extends YandereAlly {
     public static final int HEART_INTERCEPT_I = 18;
     public static final int HEART_REGEN_II = 21;
     public static final int HEART_SECRET_I = 24;
+    public static final int HEART_EMERGENCY_RECALL = 27;
+    public static final int HEART_SMART_DODGE = 30;
     public static final int HEART_LOW_HP_II = 33;
     public static final int HEART_SECRET_II = 36;
     public static final int HEART_INTERCEPT_II = 39;
+    public static final int HEART_COMBAT_TELEPORT = 42;
     public static final int HEART_SECRET_III = 45;
 
     private static final int SECRET_NEARBY_RANGE = 2;
+    private static final int COMBAT_TELEPORT_RANGE = 4;
 
     private int growthHearts = 0;
     private float lastRegenClock = -1f;
     private int lastInterceptRollTurn = Integer.MIN_VALUE;
 
-    // 탐색 감지는 정확한 비밀문 위치를 알려주지 않고, 같은 대상에 대사를 반복하지 않도록만 기록한다.
     private final HashSet<Integer> warnedNearbySecretDoors = new HashSet<>();
     private final HashSet<Integer> warnedSecretRooms = new HashSet<>();
     private int lastRoomSignature = Integer.MIN_VALUE;
@@ -82,9 +91,7 @@ public class GrowthYandereAlly extends YandereAlly {
                 + "오랫동안 애정표현을 받지 못하면 광란도가 오른다.";
     }
 
-    public int growthHearts() {
-        return growthHearts;
-    }
+    public int growthHearts() { return growthHearts; }
 
     public void configureGrowth(int hearts, int savedHP) {
         growthHearts = clampHearts(hearts);
@@ -104,51 +111,18 @@ public class GrowthYandereAlly extends YandereAlly {
         growthHearts = clampHearts(hearts);
         HT = growthMaxHP();
         defenseSkill = growthDefenseSkill();
-
-        // 최대 HP 상승분만큼 현재 HP도 함께 오른다. 하트 하나가 풀회복을 시키지는 않는다.
-        if (HT > oldHT) {
-            HP = Math.min(HT, HP + (HT - oldHT));
-        } else {
-            HP = Math.min(HP, HT);
-        }
+        if (HT > oldHT) HP = Math.min(HT, HP + (HT - oldHT));
+        else HP = Math.min(HP, HT);
     }
 
-    private int clampHearts(int value) {
-        return Math.max(0, Math.min(MAX_GROWTH_HEARTS, value));
-    }
-
-    private int growthMaxHP() {
-        return BASE_HP + HP_PER_HEART * growthHearts;
-    }
-
-    private int growthAttackMin() {
-        // 1, 3, 5...번째 하트마다 최소 공격력 +1
-        return BASE_ATTACK_MIN + (growthHearts + 1) / 2;
-    }
-
-    private int growthAttackMax() {
-        // 모든 하트마다 최대 공격력 +1
-        return BASE_ATTACK_MAX + growthHearts;
-    }
-
-    private int growthDrMin() {
-        // 6하트마다 최소 피해경감 +1
-        return growthHearts / 6;
-    }
-
-    private int growthDrMax() {
-        // 시작 0~2, 이후 3하트마다 최대 피해경감 +1
-        return 2 + growthHearts / 3;
-    }
-
-    private int growthAccuracy() {
-        // 명중/회피는 매 하트가 아니라 6하트마다 계단식 상승
-        return BASE_ACCURACY + 3 * (growthHearts / 6);
-    }
-
-    private int growthDefenseSkill() {
-        return BASE_DEFENSE + 3 * (growthHearts / 6);
-    }
+    private int clampHearts(int value) { return Math.max(0, Math.min(MAX_GROWTH_HEARTS, value)); }
+    private int growthMaxHP() { return BASE_HP + HP_PER_HEART * growthHearts; }
+    private int growthAttackMin() { return BASE_ATTACK_MIN + (growthHearts + 1) / 2; }
+    private int growthAttackMax() { return BASE_ATTACK_MAX + growthHearts; }
+    private int growthDrMin() { return growthHearts / 6; }
+    private int growthDrMax() { return 2 + growthHearts / 3; }
+    private int growthAccuracy() { return BASE_ACCURACY + 3 * (growthHearts / 6); }
+    private int growthDefenseSkill() { return BASE_DEFENSE + 3 * (growthHearts / 6); }
 
     public int guardRange() {
         if (growthHearts >= HEART_GUARD_II) return 5;
@@ -181,46 +155,35 @@ public class GrowthYandereAlly extends YandereAlly {
         return 0;
     }
 
-    public boolean hasMissedHeartWarning() {
-        return growthHearts >= HEART_MISSED_WARNING;
-    }
+    public boolean hasMissedHeartWarning() { return growthHearts >= HEART_MISSED_WARNING; }
+    public boolean hasEmergencyRecall() { return growthHearts >= HEART_EMERGENCY_RECALL; }
+    public boolean hasSmartDodge() { return growthHearts >= HEART_SMART_DODGE; }
+    public boolean hasCombatTeleport() { return growthHearts >= HEART_COMBAT_TELEPORT; }
 
     private float lowHpCombatMultiplier() {
         if (Dungeon.hero == null || lowHpAwakeningStage() == 0) return 1f;
-
         float hpRatio = Dungeon.hero.HP / (float)Math.max(1, Dungeon.hero.HT);
         if (hpRatio > 0.30f) return 1f;
-
-        // I: 30% 이하에서 공격/DR +20%
         if (lowHpAwakeningStage() == 1) return 1.20f;
-
-        // II: I를 포함하고, 더 위험할수록 보호 본능이 급격히 강해진다.
         if (hpRatio <= 0.10f) return 1.80f;
         if (hpRatio <= 0.25f) return 1.50f;
         return 1.20f;
     }
 
-    private static float globalGrowthClock() {
-        return Statistics.duration + Actor.now();
-    }
+    private static float globalGrowthClock() { return Statistics.duration + Actor.now(); }
 
     private void updateNaturalRegen() {
         float now = globalGrowthClock();
-
         if (lastRegenClock < 0f) {
             lastRegenClock = now;
             return;
         }
-
-        // 적대 중/만피 상태에서는 회복 시간을 미리 저축하지 않는다.
         if (hostileToHero() || HP >= HT) {
             lastRegenClock = now;
             return;
         }
-
         int pulses = (int)Math.floor((now - lastRegenClock) / REGEN_INTERVAL);
         if (pulses <= 0) return;
-
         int healPerPulse = Math.max(1, Math.round(HT * statRegenPercent()));
         HP = Math.min(HT, HP + healPerPulse * pulses);
         lastRegenClock += pulses * REGEN_INTERVAL;
@@ -229,133 +192,194 @@ public class GrowthYandereAlly extends YandereAlly {
     @Override
     protected Char chooseEnemy() {
         Char chosen = super.chooseEnemy();
-
-        // 부모의 복수대상/2칸 수비/광폭 로직은 우선 존중한다.
-        // 성장형 수비 강화가 해금된 경우에만, 부모가 표적을 못 찾았을 때 범위를 확장한다.
-        if (chosen != null || hostileToHero() || mode() != MODE_GUARD || guardRange() <= 2) {
-            return chosen;
-        }
-
+        if (chosen != null || hostileToHero() || mode() != MODE_GUARD || guardRange() <= 2) return chosen;
         return nearestEnemyInGrowthGuardRange();
     }
 
     private Char nearestEnemyInGrowthGuardRange() {
         if (Dungeon.level == null || Dungeon.hero == null) return null;
-
         Mob best = null;
         int bestDist = Integer.MAX_VALUE;
-
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (mob == null || mob == this || !mob.isAlive()
-                    || mob.alignment != Alignment.ENEMY
-                    || mob.isInvulnerable(getClass())) {
-                continue;
-            }
-
+                    || mob.alignment != Alignment.ENEMY || mob.isInvulnerable(getClass())) continue;
             int heroDist = Dungeon.level.distance(Dungeon.hero.pos, mob.pos);
             if (heroDist > guardRange()) continue;
-
             int myDist = Dungeon.level.distance(pos, mob.pos);
             if (best == null || myDist < bestDist) {
                 best = mob;
                 bestDist = myDist;
             }
         }
-
         return best;
     }
 
     private boolean canPrepareIntercept() {
         if (Dungeon.hero == null || Dungeon.level == null || hostileToHero()) return false;
         if (interceptStage() == 0) return false;
-
-        // 사용자가 회복시키려고 공격 금지로 돌렸을 때는 대신 맞기를 완전히 끈다.
-        // 단, 주인공이 25% 이하라 강제 보호가 켜진 경우에는 평화 명령보다 보호가 우선된다.
         if (mode() == MODE_PEACE && !emergencyProtect()) return false;
-
         int range = interceptStage() >= 2 ? 3 : 1;
         if (Dungeon.level.distance(pos, Dungeon.hero.pos) > range) return false;
-
-        // 전투가 아닌 상황에서 환경 피해를 대신 받는 일을 최대한 줄이기 위해
-        // 현재 표적이 있거나 주인공 수비범위 안에 실제 적이 있을 때만 준비한다.
         if (enemy != null && enemy.isAlive() && enemy.alignment == Alignment.ENEMY) return true;
-
         int threatRange = Math.max(guardRange(), 3);
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (mob != null && mob != this && mob.isAlive() && mob.alignment == Alignment.ENEMY
-                    && Dungeon.level.distance(Dungeon.hero.pos, mob.pos) <= threatRange) {
-                return true;
-            }
+                    && Dungeon.level.distance(Dungeon.hero.pos, mob.pos) <= threatRange) return true;
         }
         return false;
     }
 
     private boolean hasNormalLifeLink() {
         if (Dungeon.hero == null) return false;
-        for (LifeLink link : Dungeon.hero.buffs(LifeLink.class)) {
-            if (!link.yandereGuardLink) return true;
-        }
+        for (LifeLink link : Dungeon.hero.buffs(LifeLink.class)) if (!link.yandereGuardLink) return true;
         return false;
     }
 
     public void clearMyInterceptLinks() {
         if (Dungeon.hero == null) return;
         for (LifeLink link : Dungeon.hero.buffs(LifeLink.class).toArray(new LifeLink[0])) {
-            if (link.yandereGuardLink && link.object == id()) {
-                link.detach();
-            }
+            if (link.yandereGuardLink && link.object == id()) link.detach();
         }
     }
 
     private void updateInterceptLinks() {
         if (Dungeon.hero == null) return;
-
         if (!canPrepareIntercept() || hasNormalLifeLink()) {
             clearMyInterceptLinks();
             lastInterceptRollTurn = Integer.MIN_VALUE;
             return;
         }
-
-        // 이동속도 1.2 해금 뒤에도 같은 한 턴에 여러 번 확률을 굴리지 않게 한다.
         int turnKey = (int)Math.floor(globalGrowthClock());
         if (turnKey == lastInterceptRollTurn) return;
         lastInterceptRollTurn = turnKey;
-
         clearMyInterceptLinks();
-
         int stage = interceptStage();
         float chance = stage >= 2 ? 0.50f : 0.30f;
         if (Random.Float() >= chance) return;
-
-        // LifeLink 한 개 = 피해를 둘이 반씩 부담.
-        // 세 개 = 영웅 1/4, 얀데레 3/4 부담이라 II의 75% 대신 맞기를 구현한다.
         int links = stage >= 2 ? 3 : 1;
-        for (int i = 0; i < links; i++) {
-            LifeLink.attachYandereGuardLink(Dungeon.hero, id(), 1.25f);
-        }
+        for (int i = 0; i < links; i++) LifeLink.attachYandereGuardLink(Dungeon.hero, id(), 1.25f);
     }
+
+    // ---------- 27/30/42하트 고급 이동/전투 AI ----------
+
+    /** 27하트 이후 리본의 '도움 요청하기'. 쿨다운은 없다. */
+    public boolean requestHelp() {
+        if (!hasEmergencyRecall() || hostileToHero() || Dungeon.hero == null || Dungeon.level == null) return false;
+
+        if (Dungeon.level.distance(pos, Dungeon.hero.pos) > 1) {
+            int cell = safeAdjacentCell(Dungeon.hero.pos);
+            if (cell == -1) return false;
+            ScrollOfTeleportation.appear(this, cell);
+        }
+
+        boolean wasPeace = mode() == MODE_PEACE;
+        if (wasPeace) setMode(MODE_GUARD);
+        else followHero();
+
+        Char threat = nearestEnemyInGrowthGuardRange();
+        if (threat != null) targetChar(threat);
+        if (!wasPeace) yell("불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.");
+        return true;
+    }
+
+    private boolean environmentalHazardAt(int cell) {
+        if (Dungeon.level == null || cell < 0 || cell >= Dungeon.level.length()) return true;
+        return Blob.volumeAt(cell, Fire.class) > 0
+                || Blob.volumeAt(cell, ToxicGas.class) > 0
+                || Blob.volumeAt(cell, CorrosiveGas.class) > 0;
+    }
+
+    private boolean telegraphedAttackAt(int cell) {
+        if (Dungeon.level == null) return false;
+        for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
+            if (mob == null || !mob.isAlive() || mob.alignment != Alignment.ENEMY) continue;
+            if (mob instanceof Eye && ((Eye)mob).chargedBeamThreatens(cell)) return true;
+            if (mob instanceof RipperDemon && ((RipperDemon)mob).leapThreatens(cell)) return true;
+        }
+        return false;
+    }
+
+    private boolean smartDangerAt(int cell) {
+        return environmentalHazardAt(cell) || telegraphedAttackAt(cell);
+    }
+
+    private boolean safeOpenCell(int cell) {
+        if (Dungeon.level == null || cell < 0 || cell >= Dungeon.level.length()) return false;
+        if (!Dungeon.level.insideMap(cell) || !Dungeon.level.passable[cell] || Dungeon.level.pit[cell]) return false;
+        if (Actor.findChar(cell) != null) return false;
+        return !hasSmartDodge() || !smartDangerAt(cell);
+    }
+
+    private int safeAdjacentCell(int center) {
+        if (Dungeon.level == null) return -1;
+        int[] dirs = PathFinder.NEIGHBOURS8.clone();
+        Random.shuffle(dirs);
+        for (int off : dirs) {
+            int cell = center + off;
+            if (safeOpenCell(cell)) return cell;
+        }
+        return -1;
+    }
+
+    private boolean trySmartEmergencyDodge() {
+        if (!hasSmartDodge() || Dungeon.level == null || rooted || !smartDangerAt(pos)) return false;
+        int cell = safeAdjacentCell(pos);
+        if (cell == -1) return false;
+        int oldPos = pos;
+        move(cell);
+        spend(1f / speed());
+        return moveSprite(oldPos, pos);
+    }
+
+    @Override
+    protected boolean getCloser(int target) {
+        if (!hasSmartDodge() || Dungeon.level == null) return super.getCloser(target);
+        if (rooted || target == pos || !Dungeon.level.insideMap(target)) return false;
+
+        boolean[] safe = Dungeon.level.passable.clone();
+        for (int cell = 0; cell < safe.length; cell++) {
+            if (safe[cell] && smartDangerAt(cell)) safe[cell] = false;
+        }
+
+        PathFinder.Path path = Dungeon.findPath(this, target, safe, fieldOfView, true);
+        if (path == null || path.isEmpty()) return false;
+        int step = path.removeFirst();
+        if (step < 0 || step >= safe.length || !safe[step] || Actor.findChar(step) != null) return false;
+        move(step);
+        return true;
+    }
+
+    private boolean tryCombatTeleport() {
+        if (!hasCombatTeleport() || hostileToHero() || emergencyProtect()
+                || mode() == MODE_PEACE || Dungeon.level == null) return false;
+
+        Char targetChar = chooseEnemy();
+        if (targetChar == null || !targetChar.isAlive()) return false;
+        int distance = Dungeon.level.distance(pos, targetChar.pos);
+        if (distance <= 1 || distance > COMBAT_TELEPORT_RANGE) return false;
+
+        int cell = safeAdjacentCell(targetChar.pos);
+        if (cell == -1) return false;
+
+        ScrollOfTeleportation.appear(this, cell);
+        targetChar(targetChar);
+        spend(1f / speed());
+        return true;
+    }
+
+    // ---------- 탐색 성장 ----------
 
     private void updateExplorationSense() {
         if (Dungeon.level == null || Dungeon.hero == null || hostileToHero()) return;
-
         int stage = secretSenseStage();
         if (stage <= 0) {
             lastHeroPosForTrapScan = Dungeon.hero.pos;
             return;
         }
-
         warnNearbySecretDoors();
-
-        if (stage >= 3) {
-            warnOnSecretRoomEntry();
-        }
-
-        // 함정은 영웅이 계속 이동 중일 때 미리 밝혀주지 않는다.
-        // 얀데레가 연속 두 행동에서 같은 영웅 위치를 확인한 경우에만 '멈춰 있었다'고 본다.
+        if (stage >= 3) warnOnSecretRoomEntry();
         boolean heroStayedStill = lastHeroPosForTrapScan == Dungeon.hero.pos;
-        if (stage >= 2 && heroStayedStill) {
-            revealNearbyHiddenTraps(stage >= 3 ? 3 : 2);
-        }
+        if (stage >= 2 && heroStayedStill) revealNearbyHiddenTraps(stage >= 3 ? 3 : 2);
         lastHeroPosForTrapScan = Dungeon.hero.pos;
     }
 
@@ -364,14 +388,9 @@ public class GrowthYandereAlly extends YandereAlly {
         for (int cell = 0; cell < Dungeon.level.length(); cell++) {
             if (Dungeon.level.map[cell] == Terrain.SECRET_DOOR
                     && Dungeon.level.distance(Dungeon.hero.pos, cell) <= SECRET_NEARBY_RANGE
-                    && warnedNearbySecretDoors.add(cell)) {
-                foundNew = true;
-            }
+                    && warnedNearbySecretDoors.add(cell)) foundNew = true;
         }
-
-        if (foundNew) {
-            yell("잠깐♡ 이 근처, 뭔가 이상해. 그냥 지나가지 마.");
-        }
+        if (foundNew) yell("잠깐♡ 이 근처, 뭔가 이상해. 그냥 지나가지 마.");
     }
 
     private void revealNearbyHiddenTraps(int range) {
@@ -383,32 +402,24 @@ public class GrowthYandereAlly extends YandereAlly {
                 found = true;
             }
         }
-
-        if (found) {
-            yell("잠깐. 근처에 함정 있어. 밟지 마.");
-        }
+        if (found) yell("잠깐. 근처에 함정 있어. 밟지 마.");
     }
 
     private void warnOnSecretRoomEntry() {
         if (!(Dungeon.level instanceof RegularLevel)) return;
-
         Room room = ((RegularLevel)Dungeon.level).room(Dungeon.hero.pos);
         int signature = roomSignature(room);
         if (signature == lastRoomSignature) return;
         lastRoomSignature = signature;
-
         if (room == null || warnedSecretRooms.contains(signature)) return;
-
         boolean hasSecretDoor = false;
         for (Point point : room.getPoints()) {
             int cell = Dungeon.level.pointToCell(point);
-            if (cell >= 0 && cell < Dungeon.level.length()
-                    && Dungeon.level.map[cell] == Terrain.SECRET_DOOR) {
+            if (cell >= 0 && cell < Dungeon.level.length() && Dungeon.level.map[cell] == Terrain.SECRET_DOOR) {
                 hasSecretDoor = true;
                 break;
             }
         }
-
         if (hasSecretDoor) {
             warnedSecretRooms.add(signature);
             yell("여기 뭔가 숨겨져 있어♡ 이 방, 그냥 지나가면 안 될 것 같아.");
@@ -426,28 +437,28 @@ public class GrowthYandereAlly extends YandereAlly {
 
     @Override
     protected boolean act() {
+        // 30하트 이후는 당장 맞을 예고공격/위험지형 탈출이 다른 행동보다 우선한다.
+        if (trySmartEmergencyDodge()) return true;
+
+        // 42하트 이후 4칸 이내의 유효 표적에게 순간이동한다. 순간이동 자체가 한 이동 행동을 소비한다.
+        if (tryCombatTeleport()) return true;
+
         int hpBeforeParentAct = HP;
         boolean wasFriendly = !hostileToHero();
-
         boolean result = super.act();
 
         // 부모 치트형의 act당 +100 회복만 되돌리고 성장형 자연회복을 적용한다.
-        if (wasFriendly && HP > hpBeforeParentAct) {
-            HP = Math.min(HT, hpBeforeParentAct);
-        }
+        if (wasFriendly && HP > hpBeforeParentAct) HP = Math.min(HT, hpBeforeParentAct);
         updateNaturalRegen();
         updateInterceptLinks();
         updateExplorationSense();
-
         return result;
     }
 
     @Override
     public void setMode(int newMode) {
         super.setMode(newMode);
-        if (newMode == MODE_PEACE && !emergencyProtect()) {
-            clearMyInterceptLinks();
-        }
+        if (newMode == MODE_PEACE && !emergencyProtect()) clearMyInterceptLinks();
     }
 
     @Override
@@ -456,9 +467,6 @@ public class GrowthYandereAlly extends YandereAlly {
                 && ((LifeLink)src).yandereGuardLink
                 && ((LifeLink)src).object == id();
         super.damage(dmg, src);
-
-        // 대신 맞기는 한 번의 피해 사건을 막고 소모된다.
-        // II의 3개 링크는 Char.damage()가 이미 복사한 링크 목록을 순회하므로 같은 타격의 75%는 끝까지 전달된다.
         if (intercepted) clearMyInterceptLinks();
     }
 
@@ -469,16 +477,11 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     @Override
-    public int attackSkill(Char target) {
-        if (hostileToHero()) return 1_000_000;
-        return growthAccuracy();
-    }
+    public int attackSkill(Char target) { return hostileToHero() ? 1_000_000 : growthAccuracy(); }
 
     @Override
     public int damageRoll() {
-        if (hostileToHero() && Dungeon.hero != null) {
-            return Math.max(9999, Dungeon.hero.HT * 4);
-        }
+        if (hostileToHero() && Dungeon.hero != null) return Math.max(9999, Dungeon.hero.HT * 4);
         int base = Random.NormalIntRange(growthAttackMin(), growthAttackMax());
         return Math.max(0, Math.round(base * lowHpCombatMultiplier()));
     }
@@ -492,58 +495,40 @@ public class GrowthYandereAlly extends YandereAlly {
     @Override
     public float speed() {
         if (hostileToHero()) return 1f;
-        // 「네가 아픈 건 싫어♡」 II와 함께 주인공에게 더 빨리 붙도록 1.2배.
         return growthHearts >= HEART_INTERCEPT_II ? 1.2f : 1f;
     }
 
     @Override
-    public float attackDelay() {
-        return 1f;
-    }
+    public float attackDelay() { return 1f; }
 
     @Override
     public int statAttackMin() {
-        if (hostileToHero()) {
-            return Math.max(9999, Dungeon.hero == null ? 9999 : Dungeon.hero.HT * 4);
-        }
+        if (hostileToHero()) return Math.max(9999, Dungeon.hero == null ? 9999 : Dungeon.hero.HT * 4);
         return Math.max(0, Math.round(growthAttackMin() * lowHpCombatMultiplier()));
     }
 
     @Override
     public int statAttackMax() {
-        return hostileToHero() ? statAttackMin()
-                : Math.max(0, Math.round(growthAttackMax() * lowHpCombatMultiplier()));
+        return hostileToHero() ? statAttackMin() : Math.max(0, Math.round(growthAttackMax() * lowHpCombatMultiplier()));
     }
 
     @Override
-    public int statDrMin() {
-        return Math.max(0, Math.round(growthDrMin() * lowHpCombatMultiplier()));
-    }
+    public int statDrMin() { return Math.max(0, Math.round(growthDrMin() * lowHpCombatMultiplier())); }
 
     @Override
-    public int statDrMax() {
-        return Math.max(0, Math.round(growthDrMax() * lowHpCombatMultiplier()));
-    }
+    public int statDrMax() { return Math.max(0, Math.round(growthDrMax() * lowHpCombatMultiplier())); }
 
     @Override
-    public int statAccuracy() {
-        return hostileToHero() ? 1_000_000 : growthAccuracy();
-    }
+    public int statAccuracy() { return hostileToHero() ? 1_000_000 : growthAccuracy(); }
 
     @Override
-    public int statDefenseSkill() {
-        return growthDefenseSkill();
-    }
+    public int statDefenseSkill() { return growthDefenseSkill(); }
 
     @Override
-    public float statMoveSpeed() {
-        return hostileToHero() ? 1f : (growthHearts >= HEART_INTERCEPT_II ? 1.2f : 1f);
-    }
+    public float statMoveSpeed() { return hostileToHero() ? 1f : (growthHearts >= HEART_INTERCEPT_II ? 1.2f : 1f); }
 
     @Override
-    public float statAttackSpeed() {
-        return 1f;
-    }
+    public float statAttackSpeed() { return 1f; }
 
     public float statRegenPercent() {
         if (growthHearts >= HEART_REGEN_II) return 0.03f;
@@ -551,9 +536,7 @@ public class GrowthYandereAlly extends YandereAlly {
         return BASE_REGEN_PERCENT;
     }
 
-    public float statRegenInterval() {
-        return REGEN_INTERVAL;
-    }
+    public float statRegenInterval() { return REGEN_INTERVAL; }
 
     public float interceptChance() {
         if (interceptStage() >= 2) return 0.50f;
@@ -579,10 +562,8 @@ public class GrowthYandereAlly extends YandereAlly {
     @Override
     public void storeInBundle(Bundle bundle) {
         super.storeInBundle(bundle);
-
         float now = globalGrowthClock();
         float regenAge = lastRegenClock < 0f ? 0f : Math.max(0f, now - lastRegenClock);
-
         bundle.put(GROWTH_HEARTS, growthHearts);
         bundle.put(REGEN_AGE, regenAge);
     }
@@ -590,17 +571,11 @@ public class GrowthYandereAlly extends YandereAlly {
     @Override
     public void restoreFromBundle(Bundle bundle) {
         super.restoreFromBundle(bundle);
-
-        if (bundle.contains(GROWTH_HEARTS)) {
-            growthHearts = clampHearts(bundle.getInt(GROWTH_HEARTS));
-        }
-
+        if (bundle.contains(GROWTH_HEARTS)) growthHearts = clampHearts(bundle.getInt(GROWTH_HEARTS));
         HT = growthMaxHP();
         defenseSkill = growthDefenseSkill();
         HP = Math.min(HP, HT);
-
-        float regenAge = bundle.contains(REGEN_AGE)
-                ? Math.max(0f, bundle.getFloat(REGEN_AGE)) : 0f;
+        float regenAge = bundle.contains(REGEN_AGE) ? Math.max(0f, bundle.getFloat(REGEN_AGE)) : 0f;
         lastRegenClock = globalGrowthClock() - Math.min(REGEN_INTERVAL, regenAge);
         lastInterceptRollTurn = Integer.MIN_VALUE;
         lastHeroPosForTrapScan = Dungeon.hero == null ? -1 : Dungeon.hero.pos;
