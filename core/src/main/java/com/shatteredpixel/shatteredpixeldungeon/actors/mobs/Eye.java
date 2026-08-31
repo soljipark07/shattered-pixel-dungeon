@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package com.shatteredpixel.shatteredpixeldungeon.actors.mobs;
@@ -47,70 +47,57 @@ import com.watabou.utils.PathFinder;
 import com.watabou.utils.Random;
 
 public class Eye extends Mob {
-	
 	{
 		spriteClass = EyeSprite.class;
-		
 		HP = HT = 100;
 		defenseSkill = 20;
 		viewDistance = Light.DISTANCE;
-		
 		EXP = 13;
 		maxLvl = 26;
-		
 		flying = true;
-
 		HUNTING = new Hunting();
-		
 		loot = new Dewdrop();
 		lootChance = 1f;
-
 		properties.add(Property.DEMONIC);
 	}
 
 	@Override
-	public int damageRoll() {
-		return Random.NormalIntRange(20, 30);
-	}
+	public int damageRoll() { return Random.NormalIntRange(20, 30); }
 
 	@Override
-	public int attackSkill( Char target ) {
-		return 30;
-	}
-	
+	public int attackSkill(Char target) { return 30; }
+
 	@Override
-	public int drRoll() {
-		return super.drRoll() + Random.NormalIntRange(0, 10);
-	}
-	
+	public int drRoll() { return super.drRoll() + Random.NormalIntRange(0, 10); }
+
 	private Ballistica beam;
 	private int beamTarget = -1;
 	private int beamCooldown;
 	public boolean beamCharged;
 
-	@Override
-	protected boolean canAttack( Char enemy ) {
+	// Growth-yandere smart dodge uses the exact locked beam path, not a guessed line.
+	public boolean chargedBeamThreatens(int cell) {
+		if (!beamCharged || beamTarget == -1) return false;
+		Ballistica aimed = new Ballistica(pos, beamTarget, Ballistica.STOP_SOLID);
+		return aimed.subPath(1, aimed.dist).contains(cell);
+	}
 
+	@Override
+	protected boolean canAttack(Char enemy) {
 		if (beamCooldown == 0) {
 			Ballistica aim = new Ballistica(pos, enemy.pos, Ballistica.STOP_SOLID);
-
 			if (enemy.invisible == 0 && !isCharmedBy(enemy) && fieldOfView[enemy.pos]
-					&& (super.canAttack(enemy) || aim.subPath(1, aim.dist).contains(enemy.pos))){
+					&& (super.canAttack(enemy) || aim.subPath(1, aim.dist).contains(enemy.pos))) {
 				beam = aim;
 				beamTarget = enemy.pos;
 				return true;
-			} else {
-				//if the beam is charged, it has to attack, will aim at previous location of target.
-				return beamCharged;
-			}
-		} else {
-			return super.canAttack(enemy);
-		}
+			} else return beamCharged;
+		} else return super.canAttack(enemy);
 	}
 
 	@Override
 	protected boolean act() {
-		if (beamCharged && state != HUNTING){
+		if (beamCharged && state != HUNTING) {
 			beamCharged = false;
 			sprite.idle();
 		}
@@ -118,28 +105,24 @@ public class Eye extends Mob {
 			beam = new Ballistica(pos, beamTarget, Ballistica.STOP_SOLID);
 			sprite.turnTo(pos, beamTarget);
 		}
-		if (beamCooldown > 0)
-			beamCooldown--;
+		if (beamCooldown > 0) beamCooldown--;
 		return super.act();
 	}
 
 	@Override
-	protected boolean doAttack( Char enemy ) {
-
+	protected boolean doAttack(Char enemy) {
 		beam = new Ballistica(pos, beamTarget, Ballistica.STOP_SOLID);
 		if (beamCooldown > 0 || (!beamCharged && !beam.subPath(1, beam.dist).contains(enemy.pos))) {
 			return super.doAttack(enemy);
-		} else if (!beamCharged){
-			((EyeSprite)sprite).charge( enemy.pos );
-			spend( attackDelay()*2f );
+		} else if (!beamCharged) {
+			((EyeSprite)sprite).charge(enemy.pos);
+			spend(attackDelay()*2f);
 			beamCharged = true;
 			return true;
 		} else {
-
-			spend( attackDelay() );
-			
-			if (Dungeon.level.heroFOV[pos] || Dungeon.level.heroFOV[beam.collisionPos] ) {
-				sprite.zap( beam.collisionPos );
+			spend(attackDelay());
+			if (Dungeon.level.heroFOV[pos] || Dungeon.level.heroFOV[beam.collisionPos]) {
+				sprite.zap(beam.collisionPos);
 				return false;
 			} else {
 				sprite.idle();
@@ -147,7 +130,6 @@ public class Eye extends Mob {
 				return true;
 			}
 		}
-
 	}
 
 	@Override
@@ -161,90 +143,60 @@ public class Eye extends Mob {
 		flying = false;
 		super.die(cause);
 	}
-	
-	//used so resistances can differentiate between melee and magical attacks
+
 	public static class DeathGaze{}
 
-	public void deathGaze(){
-		if (!beamCharged || beamCooldown > 0 || beam == null)
-			return;
-
+	public void deathGaze() {
+		if (!beamCharged || beamCooldown > 0 || beam == null) return;
 		beamCharged = false;
 		beamCooldown = Random.IntRange(4, 6);
-
 		boolean terrainAffected = false;
-
 		Invisibility.dispel(this);
 		for (int pos : beam.subPath(1, beam.dist)) {
-
 			if (Dungeon.level.flamable[pos]) {
-
-				Dungeon.level.destroy( pos );
-				GameScene.updateMap( pos );
+				Dungeon.level.destroy(pos);
+				GameScene.updateMap(pos);
 				terrainAffected = true;
-
 			}
-
-			Char ch = Actor.findChar( pos );
-			if (ch == null) {
-				continue;
-			}
-
-			if (hit( this, ch, true )) {
-				int dmg = Random.NormalIntRange( 30, 50 );
+			Char ch = Actor.findChar(pos);
+			if (ch == null) continue;
+			if (hit(this, ch, true)) {
+				int dmg = Random.NormalIntRange(30, 50);
 				dmg = Math.round(dmg * AscensionChallenge.statModifier(this));
-
-				//logic for fists or Yog-Dzewa taking 1/2 or 1/4 damage from aggression stoned minions
-				if ( ch.buff(StoneOfAggression.Aggression.class) != null
+				if (ch.buff(StoneOfAggression.Aggression.class) != null
 						&& ch.alignment == alignment
-						&& (Char.hasProp(ch, Property.BOSS) || Char.hasProp(ch, Property.MINIBOSS))){
+						&& (Char.hasProp(ch, Property.BOSS) || Char.hasProp(ch, Property.MINIBOSS))) {
 					dmg *= 0.5f;
-					if (ch instanceof YogDzewa){
-						dmg *= 0.5f;
-					}
+					if (ch instanceof YogDzewa) dmg *= 0.5f;
 				}
-
-				ch.damage( dmg, new DeathGaze() );
-
+				ch.damage(dmg, new DeathGaze());
 				if (Dungeon.level.heroFOV[pos]) {
 					ch.sprite.flash();
-					CellEmitter.center( pos ).burst( PurpleParticle.BURST, Random.IntRange( 1, 2 ) );
+					CellEmitter.center(pos).burst(PurpleParticle.BURST, Random.IntRange(1, 2));
 				}
-
 				if (!ch.isAlive() && ch == Dungeon.hero) {
 					Badges.validateDeathFromEnemyMagic();
-					Dungeon.fail( this );
-					GLog.n( Messages.get(this, "deathgaze_kill") );
+					Dungeon.fail(this);
+					GLog.n(Messages.get(this, "deathgaze_kill"));
 				}
-			} else {
-				ch.sprite.showStatus( CharSprite.NEUTRAL,  ch.defenseVerb() );
-			}
+			} else ch.sprite.showStatus(CharSprite.NEUTRAL, ch.defenseVerb());
 		}
-
-		if (terrainAffected) {
-			Dungeon.observe();
-		}
-
+		if (terrainAffected) Dungeon.observe();
 		beam = null;
 		beamTarget = -1;
 	}
 
-	//generates an average of 1 dew, 0.25 seeds, and 0.25 stones
 	@Override
 	public Item createLoot() {
 		Item loot;
-		switch(Random.Int(4)){
+		switch(Random.Int(4)) {
 			case 0: case 1: default:
 				loot = new Dewdrop();
 				int ofs;
-				do {
-					ofs = PathFinder.NEIGHBOURS8[Random.Int(8)];
-				} while (Dungeon.level.solid[pos + ofs] && !Dungeon.level.passable[pos + ofs]);
-				if (Dungeon.level.heaps.get(pos+ofs) == null) {
-					Dungeon.level.drop(new Dewdrop(), pos + ofs).sprite.drop(pos);
-				} else {
-					Dungeon.level.drop(new Dewdrop(), pos + ofs).sprite.drop(pos + ofs);
-				}
+				do { ofs = PathFinder.NEIGHBOURS8[Random.Int(8)]; }
+				while (Dungeon.level.solid[pos + ofs] && !Dungeon.level.passable[pos + ofs]);
+				if (Dungeon.level.heaps.get(pos+ofs) == null) Dungeon.level.drop(new Dewdrop(), pos + ofs).sprite.drop(pos);
+				else Dungeon.level.drop(new Dewdrop(), pos + ofs).sprite.drop(pos + ofs);
 				break;
 			case 2:
 				loot = Generator.randomUsingDefaults(Generator.Category.SEED);
@@ -256,37 +208,35 @@ public class Eye extends Mob {
 		return loot;
 	}
 
-	private static final String BEAM_TARGET     = "beamTarget";
-	private static final String BEAM_COOLDOWN   = "beamCooldown";
-	private static final String BEAM_CHARGED    = "beamCharged";
+	private static final String BEAM_TARGET = "beamTarget";
+	private static final String BEAM_COOLDOWN = "beamCooldown";
+	private static final String BEAM_CHARGED = "beamCharged";
 
 	@Override
 	public void storeInBundle(Bundle bundle) {
 		super.storeInBundle(bundle);
-		bundle.put( BEAM_TARGET, beamTarget);
-		bundle.put( BEAM_COOLDOWN, beamCooldown );
-		bundle.put( BEAM_CHARGED, beamCharged );
+		bundle.put(BEAM_TARGET, beamTarget);
+		bundle.put(BEAM_COOLDOWN, beamCooldown);
+		bundle.put(BEAM_CHARGED, beamCharged);
 	}
 
 	@Override
 	public void restoreFromBundle(Bundle bundle) {
 		super.restoreFromBundle(bundle);
-		if (bundle.contains(BEAM_TARGET))
-			beamTarget = bundle.getInt(BEAM_TARGET);
+		if (bundle.contains(BEAM_TARGET)) beamTarget = bundle.getInt(BEAM_TARGET);
 		beamCooldown = bundle.getInt(BEAM_COOLDOWN);
 		beamCharged = bundle.getBoolean(BEAM_CHARGED);
 	}
 
 	{
-		resistances.add( WandOfDisintegration.class );
-		resistances.add( DeathGaze.class );
-		resistances.add( DisintegrationTrap.class );
+		resistances.add(WandOfDisintegration.class);
+		resistances.add(DeathGaze.class);
+		resistances.add(DisintegrationTrap.class);
 	}
 
-	private class Hunting extends Mob.Hunting{
+	private class Hunting extends Mob.Hunting {
 		@Override
 		public boolean act(boolean enemyInFOV, boolean justAlerted) {
-			//even if enemy isn't seen, attack them if the beam is charged
 			if (beamCharged && enemy != null && canAttack(enemy)) {
 				enemySeen = enemyInFOV;
 				return doAttack(enemy);
