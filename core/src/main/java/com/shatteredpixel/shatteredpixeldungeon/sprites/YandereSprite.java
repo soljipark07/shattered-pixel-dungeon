@@ -10,7 +10,7 @@ public class YandereSprite extends MobSprite {
 
     private static final int FRAME_WIDTH = 12;
     private static final int FRAME_HEIGHT = 15;
-    private static final int FRAMES_PER_STATE = 18;
+    private static final int FRAMES_PER_STATE = 21;
 
     private static final int NORMAL = 0;
     private static final int RED_I = 1;
@@ -22,6 +22,7 @@ public class YandereSprite extends MobSprite {
     private final Animation[] dieByState = new Animation[4];
     private final Animation[] attackByState = new Animation[4];
     private final Animation[] operateByState = new Animation[4];
+    private final Animation[] heartByState = new Animation[4];
 
     private final MovieClip hostileAura;
     private int visualState = -1;
@@ -55,6 +56,14 @@ public class YandereSprite extends MobSprite {
             operateByState[state] = new Animation(8, false);
             operateByState[state].frames(body,
                     first + 16, first + 17, first + 16, first + 17);
+
+            heartByState[state] = new Animation(6, false);
+            heartByState[state].frames(body,
+                    first + 18, first + 18,
+                    first + 19, first + 19,
+                    first + 20, first + 20, first + 20, first + 20,
+                    first + 19, first + 19,
+                    first + 18);
         }
 
         hostileAura = new MovieClip(Assets.Sprites.YANDERE_AURA);
@@ -64,6 +73,13 @@ public class YandereSprite extends MobSprite {
         hostileAura.play(auraAnimation);
 
         switchVisualState(NORMAL);
+    }
+
+    public void playHeartReaction() {
+        // Receiving a heart resets rage (and ends hostility) before this is
+        // called, so the approved NORMAL reaction is always appropriate.
+        switchVisualState(NORMAL);
+        play(heartByState[NORMAL], true);
     }
 
     private int desiredVisualState() {
@@ -118,6 +134,14 @@ public class YandereSprite extends MobSprite {
         switchVisualState(desiredVisualState());
         hostileAura.update();
         super.update();
+    }
+
+    @Override
+    public void onComplete(Animation anim) {
+        super.onComplete(anim);
+        if (anim == heartByState[NORMAL]) {
+            idle();
+        }
     }
 
     @Override
