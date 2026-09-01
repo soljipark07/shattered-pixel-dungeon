@@ -78,6 +78,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.Smite;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereAlly;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereBloodbath;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereJealousy;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Monk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Snake;
@@ -708,6 +709,15 @@ public class Hero extends Char {
 		}
 	}
 	
+	@Override
+	public void move(int step, boolean travelling) {
+		int oldPos = pos;
+		super.move(step, travelling);
+		if (travelling && Dungeon.level != null && oldPos != pos && Dungeon.level.adjacent(oldPos, pos)) {
+			YandereBloodbath.onHeroStep();
+		}
+	}
+
 	@Override
 	public float speed() {
 
