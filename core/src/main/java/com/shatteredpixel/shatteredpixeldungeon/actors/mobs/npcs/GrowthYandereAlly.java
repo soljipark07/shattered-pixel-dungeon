@@ -901,6 +901,30 @@ public class GrowthYandereAlly extends YandereAlly {
     @Override
     public void die(Object cause) {
         clearMyInterceptLinks();
+
+        String deathLine;
+        if (hostileToHero()) {
+            deathLine = "네가 직접 죽여도 끝난 거 아니야. 나 다시 네 옆으로 돌아갈 거야. 절대 못 벗어나.";
+        } else {
+            switch (obsessionStage()) {
+                case 4:
+                    deathLine = "괜찮아♡ 나 알아. 너 나 다시 살려줄 거잖아. 그러니까 잠깐만 기다릴게♡";
+                    break;
+                case 3:
+                    deathLine = "싫어 싫어! 나 죽어도 끝난 거 아니야! 다시 불러! 나 너 두고 안 사라질 거야!";
+                    break;
+                case 2:
+                    deathLine = "싫어! 나 이렇게 끝내기 싫어! 나 다시 네 옆으로 불러줘. 꼭. 나 혼자 두지 마.";
+                    break;
+                case 1:
+                    deathLine = "안 돼, 나 두고 가지 마. 나 다시 불러줄 거지? 꼭 그래야 해. 약속해.";
+                    break;
+                default:
+                    deathLine = "잠깐, 싫어. 나 아직 네 옆에 더 있고 싶어. 다시 불러줘.";
+                    break;
+            }
+        }
+        yell(deathLine);
         super.die(cause);
     }
 

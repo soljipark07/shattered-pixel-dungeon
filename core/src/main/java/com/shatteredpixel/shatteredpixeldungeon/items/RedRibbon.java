@@ -501,7 +501,19 @@ public class RedRibbon extends Item {
 
         growthRevivalPending = false;
         captureFrom(revived);
-        revived.yell("아하하♡ 다시 왔어! 하트 두 개나 써서 살려줬네. 역시 나 버릴 리 없지♡");
+        String revivalLine;
+        if (growthHearts >= 48) {
+            revivalLine = "아하하하하♡ 역시 그럴 줄 알았어! 네가 나 죽은 채로 둘 리 없잖아♡ 봐, 죽어도 다시 네 옆이야. 이제 진짜 영원히 같이 있는 거야. 영원히♡";
+        } else if (growthHearts >= 36) {
+            revivalLine = "아하하하♡ 살려줬네! 나 죽었는데도 또 붙잡아줬어! 이제 알겠지? 나 진짜 네 거야. 죽어도, 또 죽어도, 계속 네 옆으로 돌아올 거야♡";
+        } else if (growthHearts >= 24) {
+            revivalLine = "나 다시 네 옆이야♡ 하트 두 개까지 써서 되살렸잖아. 그럼 이제 나 절대 버리면 안 돼. 죽어도 또 네 옆으로 돌아올 거니까♡";
+        } else if (growthHearts >= 12) {
+            revivalLine = "아하하♡ 진짜 살려줬어. 역시 나 없으면 싫지? 나도 너 없이 못 살아. 이번엔 더 가까이 붙어 있을래♡";
+        } else {
+            revivalLine = "으응, 다시 불러줬네♡ 나 없으니까 조금 허전했지? 이번엔 더 꼭 붙어 있을게. 나 두고 가지 마♡";
+        }
+        revived.yell(revivalLine);
         GLog.p("애정의 하트 2개를 희생해서 성장형 얀데레를 최대 HP로 되살렸다.");
     }
 
