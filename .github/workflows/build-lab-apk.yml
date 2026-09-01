@@ -23,75 +23,27 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
+          import base64
           path = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java')
           text = path.read_text(encoding='utf-8')
-
+          old_field = '    private int lastHeroPosForTrapScan = -1;\n'
+          new_field = old_field + '    private boolean suppressGuardModeDialogue = false;\n'
           if 'private boolean suppressGuardModeDialogue = false;' not in text:
-              old_field = '    private int lastHeroPosForTrapScan = -1;\n'
               if old_field not in text:
                   raise SystemExit('field anchor not found')
-              text = text.replace(old_field, old_field + '    private boolean suppressGuardModeDialogue = false;\n', 1)
-
-          old_help = '''    public boolean requestHelp() {
-        if (!hasEmergencyRecall() || hostileToHero() || Dungeon.hero == null || Dungeon.level == null) return false;
-        if (Dungeon.level.distance(pos, Dungeon.hero.pos) > 1) {
-            int cell = safeAdjacentCell(Dungeon.hero.pos);
-            if (cell == -1) return false;
-            ScrollOfTeleportation.appear(this, cell);
-        }
-        boolean wasPeace = mode() == MODE_PEACE;
-        if (wasPeace) setMode(MODE_GUARD);
-        else followHero();
-        Char threat = nearestEnemyInGrowthGuardRange();
-        if (threat != null) targetChar(threat);
-        if (!wasPeace) yell("불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.");
-        return true;
-    }
-'''
-          new_help = '''    public boolean requestHelp() {
-        if (!hasEmergencyRecall() || hostileToHero() || Dungeon.hero == null || Dungeon.level == null) return false;
-        if (Dungeon.level.distance(pos, Dungeon.hero.pos) > 1) {
-            int cell = safeAdjacentCell(Dungeon.hero.pos);
-            if (cell == -1) return false;
-            ScrollOfTeleportation.appear(this, cell);
-        }
-        boolean wasPeace = mode() == MODE_PEACE;
-        if (wasPeace) {
-            suppressGuardModeDialogue = true;
-            setMode(MODE_GUARD);
-            suppressGuardModeDialogue = false;
-        } else {
-            followHero();
-        }
-        Char threat = nearestEnemyInGrowthGuardRange();
-        if (threat != null) targetChar(threat);
-        yell("불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.");
-        return true;
-    }
-'''
+              text = text.replace(old_field, new_field, 1)
+          old_help = base64.b64decode('ICAgIHB1YmxpYyBib29sZWFuIHJlcXVlc3RIZWxwKCkgewogICAgICAgIGlmICghaGFzRW1lcmdlbmN5UmVjYWxsKCkgfHwgaG9zdGlsZVRvSGVybygpIHx8IER1bmdlb24uaGVybyA9PSBudWxsIHx8IER1bmdlb24ubGV2ZWwgPT0gbnVsbCkgcmV0dXJuIGZhbHNlOwogICAgICAgIGlmIChEdW5nZW9uLmxldmVsLmRpc3RhbmNlKHBvcywgRHVuZ2Vvbi5oZXJvLnBvcykgPiAxKSB7CiAgICAgICAgICAgIGludCBjZWxsID0gc2FmZUFkamFjZW50Q2VsbChEdW5nZW9uLmhlcm8ucG9zKTsKICAgICAgICAgICAgaWYgKGNlbGwgPT0gLTEpIHJldHVybiBmYWxzZTsKICAgICAgICAgICAgU2Nyb2xsT2ZUZWxlcG9ydGF0aW9uLmFwcGVhcih0aGlzLCBjZWxsKTsKICAgICAgICB9CiAgICAgICAgYm9vbGVhbiB3YXNQZWFjZSA9IG1vZGUoKSA9PSBNT0RFX1BFQUNFOwogICAgICAgIGlmICh3YXNQZWFjZSkgc2V0TW9kZShNT0RFX0dVQVJEKTsKICAgICAgICBlbHNlIGZvbGxvd0hlcm8oKTsKICAgICAgICBDaGFyIHRocmVhdCA9IG5lYXJlc3RFbmVteUluR3Jvd3RoR3VhcmRSYW5nZSgpOwogICAgICAgIGlmICh0aHJlYXQgIT0gbnVsbCkgdGFyZ2V0Q2hhcih0aHJlYXQpOwogICAgICAgIGlmICghd2FzUGVhY2UpIHllbGwoIuu2iOuggOyWtD8g67CU66GcIOyZlOyWtOKZoSDrhKQg7JiG7JeQIOyeiOydhOqyjC4g7J207KCcIOuCtOqwgCDrp4nslYTspITqsowuIik7CiAgICAgICAgcmV0dXJuIHRydWU7CiAgICB9Cg==').decode('utf-8')
+          new_help = base64.b64decode('ICAgIHB1YmxpYyBib29sZWFuIHJlcXVlc3RIZWxwKCkgewogICAgICAgIGlmICghaGFzRW1lcmdlbmN5UmVjYWxsKCkgfHwgaG9zdGlsZVRvSGVybygpIHx8IER1bmdlb24uaGVybyA9PSBudWxsIHx8IER1bmdlb24ubGV2ZWwgPT0gbnVsbCkgcmV0dXJuIGZhbHNlOwogICAgICAgIGlmIChEdW5nZW9uLmxldmVsLmRpc3RhbmNlKHBvcywgRHVuZ2Vvbi5oZXJvLnBvcykgPiAxKSB7CiAgICAgICAgICAgIGludCBjZWxsID0gc2FmZUFkamFjZW50Q2VsbChEdW5nZW9uLmhlcm8ucG9zKTsKICAgICAgICAgICAgaWYgKGNlbGwgPT0gLTEpIHJldHVybiBmYWxzZTsKICAgICAgICAgICAgU2Nyb2xsT2ZUZWxlcG9ydGF0aW9uLmFwcGVhcih0aGlzLCBjZWxsKTsKICAgICAgICB9CiAgICAgICAgYm9vbGVhbiB3YXNQZWFjZSA9IG1vZGUoKSA9PSBNT0RFX1BFQUNFOwogICAgICAgIGlmICh3YXNQZWFjZSkgewogICAgICAgICAgICBzdXBwcmVzc0d1YXJkTW9kZURpYWxvZ3VlID0gdHJ1ZTsKICAgICAgICAgICAgc2V0TW9kZShNT0RFX0dVQVJEKTsKICAgICAgICAgICAgc3VwcHJlc3NHdWFyZE1vZGVEaWFsb2d1ZSA9IGZhbHNlOwogICAgICAgIH0gZWxzZSB7CiAgICAgICAgICAgIGZvbGxvd0hlcm8oKTsKICAgICAgICB9CiAgICAgICAgQ2hhciB0aHJlYXQgPSBuZWFyZXN0RW5lbXlJbkdyb3d0aEd1YXJkUmFuZ2UoKTsKICAgICAgICBpZiAodGhyZWF0ICE9IG51bGwpIHRhcmdldENoYXIodGhyZWF0KTsKICAgICAgICB5ZWxsKCLrtojroIDslrQ/IOuwlOuhnCDsmZTslrTimaEg64SkIOyYhuyXkCDsnojsnYTqsowuIOydtOygnCDrgrTqsIAg66eJ7JWE7KSE6rKMLiIpOwogICAgICAgIHJldHVybiB0cnVlOwogICAgfQo=').decode('utf-8')
           if old_help in text:
               text = text.replace(old_help, new_help, 1)
           elif new_help not in text:
               raise SystemExit('requestHelp anchor not found')
-
-          old_yell = '''    @Override
-    public void yell(String text) {
-        int kind = dialogueKind(text);
-'''
-          new_yell = '''    @Override
-    public void yell(String text) {
-        if (suppressGuardModeDialogue) {
-            suppressGuardModeDialogue = false;
-            if ("응♡ 네 옆에 딱 붙어 있을게. 가까이 오는 것만 내가 치워줄게.".equals(text)) return;
-        }
-        int kind = dialogueKind(text);
-'''
+          old_yell = base64.b64decode('ICAgIEBPdmVycmlkZQogICAgcHVibGljIHZvaWQgeWVsbChTdHJpbmcgdGV4dCkgewogICAgICAgIGludCBraW5kID0gZGlhbG9ndWVLaW5kKHRleHQpOwo=').decode('utf-8')
+          new_yell = base64.b64decode('ICAgIEBPdmVycmlkZQogICAgcHVibGljIHZvaWQgeWVsbChTdHJpbmcgdGV4dCkgewogICAgICAgIGlmIChzdXBwcmVzc0d1YXJkTW9kZURpYWxvZ3VlKSB7CiAgICAgICAgICAgIHN1cHByZXNzR3VhcmRNb2RlRGlhbG9ndWUgPSBmYWxzZTsKICAgICAgICAgICAgaWYgKCLsnZHimaEg64SkIOyYhuyXkCDrlLEg67aZ7Ja0IOyeiOydhOqyjC4g6rCA6rmM7J20IOyYpOuKlCDqsoPrp4wg64K06rCAIOy5mOybjOykhOqyjC4iLmVxdWFscyh0ZXh0KSkgcmV0dXJuOwogICAgICAgIH0KICAgICAgICBpbnQga2luZCA9IGRpYWxvZ3VlS2luZCh0ZXh0KTsK').decode('utf-8')
           if old_yell in text:
               text = text.replace(old_yell, new_yell, 1)
           elif new_yell not in text:
               raise SystemExit('yell anchor not found')
-
           path.write_text(text, encoding='utf-8')
           PY
 
@@ -130,7 +82,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout HEAD^ -- .github/workflows/build-lab-apk.yml
+          git checkout f3eea41bd27c28e50b2d965f7b739dfb90ff2452 -- .github/workflows/build-lab-apk.yml
           git rm -f .github/workflows/stage13_help_dialogue_fix.yml || true
           git add core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java .github/workflows/build-lab-apk.yml
           git commit -m "fix: use help request dialogue from peace mode"
