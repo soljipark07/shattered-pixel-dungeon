@@ -6,6 +6,8 @@ on:
       - master
       - feature/yandere-lab-v04
       - lab3-growth-dev
+    paths-ignore:
+      - ".stage13_cleanup/**"
   workflow_dispatch:
 
 permissions:
