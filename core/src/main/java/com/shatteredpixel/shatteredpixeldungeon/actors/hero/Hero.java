@@ -710,15 +710,6 @@ public class Hero extends Char {
 	}
 	
 	@Override
-	public void move(int step, boolean travelling) {
-		int oldPos = pos;
-		super.move(step, travelling);
-		if (travelling && Dungeon.level != null && oldPos != pos && Dungeon.level.adjacent(oldPos, pos)) {
-			YandereBloodbath.onHeroStep();
-		}
-	}
-
-	@Override
 	public float speed() {
 
 		float speed = super.speed();
@@ -2305,8 +2296,12 @@ public class Hero extends Char {
 	@Override
 	public void move(int step, boolean travelling) {
 		boolean wasHighGrass = Dungeon.level.map[step] == Terrain.HIGH_GRASS;
+		int oldPos = pos;
 
 		super.move( step, travelling);
+		if (travelling && Dungeon.level != null && oldPos != pos && Dungeon.level.adjacent(oldPos, pos)) {
+			YandereBloodbath.onHeroStep();
+		}
 		
 		if (!flying && travelling) {
 			if (Dungeon.level.water[pos]) {
