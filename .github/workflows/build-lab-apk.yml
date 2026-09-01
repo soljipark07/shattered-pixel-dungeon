@@ -76,7 +76,7 @@ jobs:
           path: android/build/outputs/apk/debug/android-debug.apk
           if-no-files-found: error
 
-      - name: Commit fix and restore workflows
+      - name: Commit dialogue source
         run: |
           if git diff --quiet -- core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java; then
             echo "Dialogue fix already present; nothing to commit."
@@ -84,8 +84,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout f3eea41bd27c28e50b2d965f7b739dfb90ff2452 -- .github/workflows/build-lab-apk.yml
-          git rm -f .github/workflows/stage13_help_dialogue_fix.yml || true
-          git add core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java .github/workflows/build-lab-apk.yml
+          git add core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java
           git commit -m "fix: use help request dialogue from peace mode"
           git push origin HEAD:lab3-growth-dev
