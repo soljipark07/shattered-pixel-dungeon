@@ -76,6 +76,7 @@ public class GrowthYandereAlly extends YandereAlly {
     private final HashSet<Integer> warnedSecretRooms = new HashSet<>();
     private int lastRoomSignature = Integer.MIN_VALUE;
     private int lastHeroPosForTrapScan = -1;
+    private boolean suppressGuardModeDialogue = false;
 
     {
         HP = HT = BASE_HP;
@@ -368,11 +369,16 @@ public class GrowthYandereAlly extends YandereAlly {
             ScrollOfTeleportation.appear(this, cell);
         }
         boolean wasPeace = mode() == MODE_PEACE;
-        if (wasPeace) setMode(MODE_GUARD);
-        else followHero();
+        if (wasPeace) {
+            suppressGuardModeDialogue = true;
+            setMode(MODE_GUARD);
+            suppressGuardModeDialogue = false;
+        } else {
+            followHero();
+        }
         Char threat = nearestEnemyInGrowthGuardRange();
         if (threat != null) targetChar(threat);
-        if (!wasPeace) yell("불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.");
+        yell("불렀어? 바로 왔어♡ 네 옆에 있을게. 이제 내가 막아줄게.");
         return true;
     }
 
@@ -857,6 +863,10 @@ public class GrowthYandereAlly extends YandereAlly {
 
     @Override
     public void yell(String text) {
+        if (suppressGuardModeDialogue) {
+            suppressGuardModeDialogue = false;
+            if ("응♡ 네 옆에 딱 붙어 있을게. 가까이 오는 것만 내가 치워줄게.".equals(text)) return;
+        }
         int kind = dialogueKind(text);
         if (kind == DIALOGUE_OTHER) {
             super.yell(text);
