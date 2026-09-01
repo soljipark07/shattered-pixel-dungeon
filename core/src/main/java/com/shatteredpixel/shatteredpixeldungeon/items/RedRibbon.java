@@ -26,6 +26,7 @@ public class RedRibbon extends Item {
     public static final int PROFILE_CHEAT = 0;
     public static final int PROFILE_GROWTH = 1;
     public static final int MAX_GROWTH_HEARTS = 48;
+    public static final int GROWTH_REVIVE_HEART_COST = 2;
 
     private static final float ABANDONMENT_DAMAGE_MULTIPLIER = 0.80f;
     private static final float ABANDONMENT_ATTACK_SPEED_MULTIPLIER = 0.80f;
@@ -40,6 +41,7 @@ public class RedRibbon extends Item {
     private int profile = PROFILE_CHEAT;
     private boolean profileLocked = false;
     private int growthHearts = 0;
+    private boolean growthRevivalPending = false;
 
     private boolean abandonmentActive = false;
     private float abandonmentStartClock = -1f;
@@ -303,7 +305,10 @@ public class RedRibbon extends Item {
     }
 
     private String primaryCommandLabel(YandereAlly ally) {
-        if (ally == null) return "소환";
+        if (ally == null) {
+            if (isGrowthProfile() && growthRevivalPending) return "하트 2개로 되살리기";
+            return "소환";
+        }
         if (ally instanceof GrowthYandereAlly) {
             GrowthYandereAlly growth = (GrowthYandereAlly)ally;
             return growth.hasEmergencyRecall() ? "도움 요청하기" : "내 옆으로 오라고 하기";
@@ -379,6 +384,7 @@ public class RedRibbon extends Item {
                 if (index == 0) {
                     profile = PROFILE_CHEAT;
                     growthHearts = 0;
+                    growthRevivalPending = false;
                     savedGrowthHP = -1;
                     lastHeartWarningDepth = Integer.MIN_VALUE;
                     lastHeartWarningBranch = Integer.MIN_VALUE;
@@ -386,6 +392,7 @@ public class RedRibbon extends Item {
                 } else if (index == 1) {
                     profile = PROFILE_GROWTH;
                     growthHearts = 0;
+                    growthRevivalPending = false;
                     savedGrowthHP = -1;
                     lastHeartWarningDepth = Integer.MIN_VALUE;
                     lastHeartWarningBranch = Integer.MIN_VALUE;
@@ -434,6 +441,70 @@ public class RedRibbon extends Item {
         return best;
     }
 
+    private int inventoryHeartCount(Hero hero) {
+        if (hero == null || hero.belongings == null) return 0;
+        int count = 0;
+        for (YandereHeart heart : hero.belongings.getAllItems(YandereHeart.class)) {
+            count += Math.max(0, heart.quantity());
+        }
+        return count;
+    }
+
+    private boolean consumeInventoryHearts(Hero hero, int amount) {
+        if (hero == null || hero.belongings == null || amount <= 0) return false;
+        if (inventoryHeartCount(hero) < amount) return false;
+
+        int remaining = amount;
+        ArrayList<YandereHeart> stacks = hero.belongings.getAllItems(YandereHeart.class);
+        for (YandereHeart heart : stacks) {
+            while (remaining > 0 && heart.quantity() > 0) {
+                heart.detach(hero.belongings.backpack);
+                remaining--;
+            }
+            if (remaining <= 0) break;
+        }
+        Item.updateQuickslot();
+        return remaining <= 0;
+    }
+
+    private void reviveGrowth(Hero hero) {
+        if (!isGrowthProfile() || !growthRevivalPending) return;
+        int available = inventoryHeartCount(hero);
+        if (available < GROWTH_REVIVE_HEART_COST) {
+            GLog.w("되살리려면 애정의 하트 " + GROWTH_REVIVE_HEART_COST + "개가 필요해. 지금은 " + available + "개 있어.");
+            return;
+        }
+
+        // Build the ally first so a blocked floor never eats the revival cost.
+        summoned = true;
+        savedHostile = false;
+        savedRage = 0;
+        savedGrowthHP = -1; // -1 makes configureGrowth restore at full HP.
+        createOnCurrentFloor(hero, false, true);
+        YandereAlly revived = findAlly();
+        if (!(revived instanceof GrowthYandereAlly)) {
+            summoned = false;
+            growthRevivalPending = true;
+            GLog.w("지금은 얀데레가 되살아날 자리를 만들 수 없어. 하트는 소모하지 않았어.");
+            return;
+        }
+
+        if (!consumeInventoryHearts(hero, GROWTH_REVIVE_HEART_COST)) {
+            // This should be unreachable after the count check, but do not silently
+            // turn revival hearts into growth/relationship hearts in any case.
+            revived.die(this);
+            summoned = false;
+            growthRevivalPending = true;
+            GLog.w("하트를 소모하지 못해서 부활을 취소했어.");
+            return;
+        }
+
+        growthRevivalPending = false;
+        captureFrom(revived);
+        revived.yell("아하하♡ 다시 왔어! 하트 두 개나 써서 살려줬네. 역시 나 버릴 리 없지♡");
+        GLog.p("애정의 하트 2개를 희생해서 성장형 얀데레를 최대 HP로 되살렸다.");
+    }
+
     private void spawnOrRecall(Hero hero, boolean manual) {
         if (Dungeon.level == null || hero == null) return;
         YandereAlly ally = findAlly();
@@ -473,11 +544,20 @@ public class RedRibbon extends Item {
             return;
         }
 
+        if (isGrowthProfile() && growthRevivalPending) {
+            reviveGrowth(hero);
+            return;
+        }
+
         summoned = true;
         createOnCurrentFloor(hero, manual);
     }
 
     private void createOnCurrentFloor(Hero hero, boolean manual) {
+        createOnCurrentFloor(hero, manual, false);
+    }
+
+    private void createOnCurrentFloor(Hero hero, boolean manual, boolean revival) {
         if (Dungeon.level == null || hero == null || findAlly() != null) return;
         YandereAlly ally;
         if (isGrowthProfile()) {
@@ -506,7 +586,9 @@ public class RedRibbon extends Item {
         GameScene.add(ally, 0f);
         Dungeon.level.occupyCell(ally);
 
-        if (manual && !savedHostile) ally.yell("찾았다♡ 이제 나 두고 혼자 가지 마. 끝까지 같이 가는 거야.");
+        if (revival) {
+            // reviveGrowth emits its own line after the two hearts are actually consumed.
+        } else if (manual && !savedHostile) ally.yell("찾았다♡ 이제 나 두고 혼자 가지 마. 끝까지 같이 가는 거야.");
         else if (!manual && !savedHostile) ally.queueFloorArrivalDialogue(false);
         else if (savedHostile) ally.queueFloorArrivalDialogue(true);
         Item.updateQuickslot();
@@ -522,6 +604,7 @@ public class RedRibbon extends Item {
         savedGrowthHP = ally instanceof GrowthYandereAlly ? ally.HP : -1;
         allyID = ally.id();
         summoned = true;
+        growthRevivalPending = false;
         profileLocked = true;
     }
 
@@ -623,6 +706,7 @@ public class RedRibbon extends Item {
         ribbon.savedHostile = false;
         ribbon.savedRage = 0;
         ribbon.savedGrowthHP = -1;
+        ribbon.growthRevivalPending = ribbon.isGrowthProfile() && ally instanceof GrowthYandereAlly;
         ribbon.profileLocked = true;
         if (ally != null) {
             ribbon.savedMode = ally.mode();
@@ -636,7 +720,9 @@ public class RedRibbon extends Item {
         if (ally == null) {
             String text = "유형: " + profileName()
                     + (isGrowthProfile() ? "\n성장 하트: " + growthHearts + "/" + MAX_GROWTH_HEARTS : "")
-                    + "\n\n" + (summoned ? "층 이동 직후라면 영웅이 한 번 행동하면 자동으로 따라온다." : "현재 소환된 얀데레가 없어.");
+                    + "\n\n" + (growthRevivalPending && isGrowthProfile()
+                        ? "성장형 얀데레가 죽었다. 애정의 하트 2개를 희생하면 최대 HP로 되살릴 수 있다."
+                        : summoned ? "층 이동 직후라면 영웅이 한 번 행동하면 자동으로 따라온다." : "현재 소환된 얀데레가 없어.");
             GameScene.show(new WndOptions("얀데레 상태", text, "닫기"));
             return;
         }
@@ -750,6 +836,7 @@ public class RedRibbon extends Item {
     private static final String PROFILE = "lab3_yandere_profile";
     private static final String PROFILE_LOCKED = "lab3_yandere_profile_locked";
     private static final String GROWTH_HEARTS = "lab3_yandere_growth_hearts";
+    private static final String GROWTH_REVIVAL_PENDING = "lab3_yandere_growth_revival_pending";
     private static final String HEART_WARNING_DEPTH = "lab3_yandere_heart_warning_depth";
     private static final String HEART_WARNING_BRANCH = "lab3_yandere_heart_warning_branch";
     private static final String SAVED_MODE = "lab3_yandere_saved_mode";
@@ -801,6 +888,7 @@ public class RedRibbon extends Item {
         bundle.put(PROFILE, profile);
         bundle.put(PROFILE_LOCKED, profileLocked);
         bundle.put(GROWTH_HEARTS, growthHearts);
+        bundle.put(GROWTH_REVIVAL_PENDING, growthRevivalPending);
         bundle.put(HEART_WARNING_DEPTH, lastHeartWarningDepth);
         bundle.put(HEART_WARNING_BRANCH, lastHeartWarningBranch);
         bundle.put(SAVED_MODE, savedMode);
@@ -824,6 +912,7 @@ public class RedRibbon extends Item {
         if (bundle.contains(SUMMONED)) summoned = bundle.getBoolean(SUMMONED);
         if (bundle.contains(PROFILE)) profile = bundle.getInt(PROFILE);
         if (bundle.contains(GROWTH_HEARTS)) growthHearts = Math.max(0, Math.min(MAX_GROWTH_HEARTS, bundle.getInt(GROWTH_HEARTS)));
+        growthRevivalPending = bundle.contains(GROWTH_REVIVAL_PENDING) && bundle.getBoolean(GROWTH_REVIVAL_PENDING);
         if (bundle.contains(HEART_WARNING_DEPTH)) lastHeartWarningDepth = bundle.getInt(HEART_WARNING_DEPTH);
         if (bundle.contains(HEART_WARNING_BRANCH)) lastHeartWarningBranch = bundle.getInt(HEART_WARNING_BRANCH);
         if (bundle.contains(SAVED_MODE)) savedMode = bundle.getInt(SAVED_MODE);
@@ -847,6 +936,7 @@ public class RedRibbon extends Item {
             profile = PROFILE_CHEAT;
             profileLocked = summoned || savedTotalHearts > 0;
             growthHearts = 0;
+            growthRevivalPending = false;
             savedGrowthHP = -1;
             lastHeartWarningDepth = Integer.MIN_VALUE;
             lastHeartWarningBranch = Integer.MIN_VALUE;
