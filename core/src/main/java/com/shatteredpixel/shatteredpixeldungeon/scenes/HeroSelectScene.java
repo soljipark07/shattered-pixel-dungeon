@@ -153,14 +153,7 @@ public class HeroSelectScene extends PixelScene {
 				super.onClick();
 
 				if (GamesInProgress.selectedClass == null) return;
-
-				Dungeon.hero = null;
-				Dungeon.daily = Dungeon.dailyReplay = false;
-				Dungeon.initSeed();
-				ActionIndicator.clearAction();
-				InterlevelScene.mode = InterlevelScene.Mode.DESCEND;
-
-				Game.switchScene( InterlevelScene.class );
+				showModeSelection();
 			}
 		};
 		startBtn.icon(Icons.get(Icons.ENTER));
@@ -399,6 +392,34 @@ public class HeroSelectScene extends PixelScene {
 
 		fadeIn();
 
+	}
+
+	private void showModeSelection() {
+		ShatteredPixelDungeon.scene().addToFront(new WndOptions(
+				"게임 모드",
+				"일반 모드는 기존 녹픽던을 그대로 시작한다.\n\n"
+						+ "실험실 모드는 아이템 구역, 넓은 추격 구역, 몬스터 소환 구역으로 "
+						+ "나뉜 고정 테스트 맵을 처음부터 생성한다.",
+				"일반 모드",
+				"실험실 모드",
+				"취소") {
+			@Override
+			protected void onSelect(int index) {
+				if (index == 0) startNewGame(false);
+				if (index == 1) startNewGame(true);
+			}
+		});
+	}
+
+	private void startNewGame(boolean laboratory) {
+		Dungeon.hero = null;
+		Dungeon.daily = Dungeon.dailyReplay = false;
+		Dungeon.labMode = laboratory;
+		Dungeon.initSeed();
+		ActionIndicator.clearAction();
+		InterlevelScene.mode = InterlevelScene.Mode.DESCEND;
+
+		Game.switchScene(InterlevelScene.class);
 	}
 
 	private void updateOptionsColor(){
@@ -751,6 +772,7 @@ public class HeroSelectScene extends PixelScene {
 
 								Dungeon.hero = null;
 								Dungeon.daily = true;
+								Dungeon.labMode = false;
 								Dungeon.initSeed();
 								ActionIndicator.clearAction();
 								InterlevelScene.mode = InterlevelScene.Mode.DESCEND;
