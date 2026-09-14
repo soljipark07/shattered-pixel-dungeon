@@ -17,7 +17,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Apply Task 4 Lab equipment hooks once
+      - name: Apply Task 5 Lab mode hooks once
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -27,125 +27,101 @@ jobs:
               assert count == 1, f"{label}: expected exactly one anchor, found {count}"
               return text.replace(old, new, 1)
 
-          # KindofMisc: persist/activate extra Lab equipment while preserving v4 slot logic.
-          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java')
+          # Dungeon: persist Lab mode and create LabLevel only for the normal branch.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java')
           text = p.read_text()
-          if 'labExtraEquipped()' not in text:
-              text = replace_once(
-                  text,
-                  'import com.watabou.utils.Random;\n',
-                  'import com.watabou.utils.Random;\nimport com.watabou.utils.Bundle;\n',
-                  'KindofMisc Bundle import')
-              text = replace_once(
-                  text,
-                  'public abstract class KindofMisc extends EquipableItem {\n\n',
-                  'public abstract class KindofMisc extends EquipableItem {\n\n'
-                  '\tprivate static final String LAB_EXTRA_EQUIPPED = "lab_extra_equipped";\n'
-                  '\tprivate boolean labExtraEquipped = false;\n\n'
-                  '\tpublic boolean labExtraEquipped(){\n'
-                  '\t\treturn labExtraEquipped;\n'
-                  '\t}\n\n'
-                  '\tpublic boolean labEquipExtra(Hero hero){\n'
-                  '\t\tif (hero == null || labExtraEquipped || isEquipped(hero)) return false;\n'
-                  '\t\tlabExtraEquipped = true;\n'
-                  '\t\tactivate(hero);\n'
-                  '\t\thero.updateHT(false);\n'
-                  '\t\tupdateQuickslot();\n'
-                  '\t\treturn true;\n'
-                  '\t}\n\n'
-                  '\t@Override\n'
-                  '\tpublic void storeInBundle(Bundle bundle) {\n'
-                  '\t\tsuper.storeInBundle(bundle);\n'
-                  '\t\tbundle.put(LAB_EXTRA_EQUIPPED, labExtraEquipped);\n'
-                  '\t}\n\n'
-                  '\t@Override\n'
-                  '\tpublic void restoreFromBundle(Bundle bundle) {\n'
-                  '\t\tsuper.restoreFromBundle(bundle);\n'
-                  '\t\tlabExtraEquipped = bundle.getBoolean(LAB_EXTRA_EQUIPPED);\n'
-                  '\t}\n\n',
-                  'KindofMisc Lab state block')
-              text = replace_once(
-                  text,
-                  '\tpublic boolean doUnequip(Hero hero, boolean collect, boolean single) {\n\t\tif (super.doUnequip(hero, collect, single)){\n',
-                  '\tpublic boolean doUnequip(Hero hero, boolean collect, boolean single) {\n'
-                  '\t\tif (labExtraEquipped) {\n'
-                  '\t\t\tlabExtraEquipped = false;\n'
-                  '\t\t\tupdateQuickslot();\n'
-                  '\t\t\thero.updateHT(false);\n'
-                  '\t\t\treturn true;\n'
-                  '\t\t}\n\n'
-                  '\t\tif (super.doUnequip(hero, collect, single)){\n',
-                  'KindofMisc extra unequip')
-              text = replace_once(
-                  text,
-                  '\t\treturn hero != null && (hero.belongings.artifact() == this\n\t\t\t\t|| hero.belongings.misc() == this\n\t\t\t\t|| hero.belongings.ring() == this);\n',
-                  '\t\treturn hero != null && (hero.belongings.artifact() == this\n\t\t\t\t|| hero.belongings.misc() == this\n\t\t\t\t|| hero.belongings.ring() == this\n\t\t\t\t|| labExtraEquipped);\n',
-                  'KindofMisc isEquipped')
-              p.write_text(text)
-
-          # Belongings: +500 capacity and reactivate extra Lab equipment after load.
-          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Belongings.java')
-          text = p.read_text()
-          if 'return cap + 500;' not in text:
-              text = replace_once(text, '\t\t\treturn cap;\n', '\t\t\treturn cap + 500;\n', 'Belongings capacity')
-          if 'labExtraEquipped()' not in text:
-              text = replace_once(
-                  text,
-                  '\t\tsecondWep = (KindOfWeapon) bundle.get(SECOND_WEP);\n\t\tif (secondWep() != null)    secondWep().activate(owner);\n\n\t\tbundleRestoring = false;\n',
-                  '\t\tsecondWep = (KindOfWeapon) bundle.get(SECOND_WEP);\n'
-                  '\t\tif (secondWep() != null)    secondWep().activate(owner);\n\n'
-                  '\t\tfor (Item i : backpack.items){\n'
-                  '\t\t\tif (i instanceof KindofMisc && ((KindofMisc)i).labExtraEquipped()){\n'
-                  '\t\t\t\t((KindofMisc)i).activate(owner);\n'
-                  '\t\t\t}\n'
-                  '\t\t}\n'
-                  '\t\towner.updateHT(false);\n\n'
-                  '\t\tbundleRestoring = false;\n',
-                  'Belongings restore Lab extras')
+          if 'import com.shatteredpixel.shatteredpixeldungeon.levels.LabLevel;' not in text:
+              text = replace_once(text,
+                  'import com.shatteredpixel.shatteredpixeldungeon.levels.HallsLevel;\nimport com.shatteredpixel.shatteredpixeldungeon.levels.LastLevel;\n',
+                  'import com.shatteredpixel.shatteredpixeldungeon.levels.HallsLevel;\nimport com.shatteredpixel.shatteredpixeldungeon.levels.LabLevel;\nimport com.shatteredpixel.shatteredpixeldungeon.levels.LastLevel;\n',
+                  'Dungeon LabLevel import')
+          if 'public static boolean labMode;' not in text:
+              text = replace_once(text,
+                  '\tpublic static boolean daily;\n\tpublic static boolean dailyReplay;\n',
+                  '\tpublic static boolean daily;\n\tpublic static boolean dailyReplay;\n\tpublic static boolean labMode;\n',
+                  'Dungeon labMode field')
+          if 'if (labMode && branch == 0)' not in text:
+              text = replace_once(text,
+                  '\t\tLevel level;\n\t\tif (branch == 0) {\n',
+                  '\t\tLevel level;\n\t\tif (labMode && branch == 0) {\n\t\t\tlevel = new LabLevel();\n\t\t} else if (branch == 0) {\n',
+                  'Dungeon LabLevel branch')
+          if 'private static final String LAB_MODE' not in text:
+              text = replace_once(text,
+                  '\tprivate static final String DAILY_REPLAY= "daily_replay";\n\tprivate static final String LAST_PLAYED = "last_played";\n',
+                  '\tprivate static final String DAILY_REPLAY= "daily_replay";\n\tprivate static final String LAB_MODE    = "lab_mode";\n\tprivate static final String LAST_PLAYED = "last_played";\n',
+                  'Dungeon Lab mode key')
+          if 'bundle.put( LAB_MODE, labMode );' not in text:
+              text = replace_once(text,
+                  '\t\t\tbundle.put( DAILY_REPLAY, dailyReplay );\n\t\t\tbundle.put( LAST_PLAYED, lastPlayed = Game.realTime);\n',
+                  '\t\t\tbundle.put( DAILY_REPLAY, dailyReplay );\n\t\t\tbundle.put( LAB_MODE, labMode );\n\t\t\tbundle.put( LAST_PLAYED, lastPlayed = Game.realTime);\n',
+                  'Dungeon save Lab mode')
+          if 'labMode = bundle.contains(LAB_MODE)' not in text:
+              text = replace_once(text,
+                  '\t\tdaily = bundle.getBoolean( DAILY );\n\t\tdailyReplay = bundle.getBoolean( DAILY_REPLAY );\n\n\t\tActor.clear();\n',
+                  '\t\tdaily = bundle.getBoolean( DAILY );\n\t\tdailyReplay = bundle.getBoolean( DAILY_REPLAY );\n\t\tlabMode = bundle.contains(LAB_MODE) && bundle.getBoolean(LAB_MODE);\n\n\t\tActor.clear();\n',
+                  'Dungeon load Lab mode')
           p.write_text(text)
 
-          # Artifact: restore Lab forced-upgrade support, respecting artifact level cap.
-          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/artifacts/Artifact.java')
+          # Level: preserve Yandere state across transitions and spawn two hearts on normal floors.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/levels/Level.java')
           text = p.read_text()
-          if 'return level() < levelCap;' not in text:
-              text = replace_once(
-                  text,
-                  '\tpublic boolean isUpgradable() {\n\t\treturn false;\n\t}\n',
-                  '\tpublic boolean isUpgradable() {\n\t\treturn level() < levelCap;\n\t}\n',
-                  'Artifact isUpgradable')
+          if 'import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;' not in text:
+              text = replace_once(text,
+                  'import com.shatteredpixel.shatteredpixeldungeon.items.Heap;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Item;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Stylus;\n',
+                  'import com.shatteredpixel.shatteredpixeldungeon.items.Heap;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Item;\nimport com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;\nimport com.shatteredpixel.shatteredpixeldungeon.items.YandereHeart;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Stylus;\n',
+                  'Level Yandere imports')
+          if '// LAB3-y02 HEART SPAWN' not in text:
+              text = replace_once(text,
+                  '\t\tif (!Dungeon.bossLevel() && Dungeon.branch == 0) {\n\n\t\t\taddItemToSpawn(Generator.random(Generator.Category.FOOD));\n',
+                  '\t\tif (!Dungeon.bossLevel() && Dungeon.branch == 0) {\n\t\t\t// LAB3-y02 HEART SPAWN\n\t\t\taddItemToSpawn(new YandereHeart());\n\t\t\taddItemToSpawn(new YandereHeart());\n\n\t\t\taddItemToSpawn(Generator.random(Generator.Category.FOOD));\n',
+                  'Level heart spawn')
+          if '\t\tRedRibbon.beforeTransition();' not in text:
+              text = replace_once(text,
+                  '\tpublic static void beforeTransition(){\n\n\t\t//time freeze effects need to resolve their pressed cells before transitioning\n',
+                  '\tpublic static void beforeTransition(){\n\t\tRedRibbon.beforeTransition();\n\n\t\t//time freeze effects need to resolve their pressed cells before transitioning\n',
+                  'Level ribbon transition')
           p.write_text(text)
 
-          # HeroClass: give every Lab run the developer tool, as in the v3.3.8 Lab.
-          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/HeroClass.java')
+          # HeroSelectScene: explicit Normal/Lab chooser, while daily runs always disable Lab mode.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/HeroSelectScene.java')
           text = p.read_text()
-          if 'import com.shatteredpixel.shatteredpixeldungeon.items.DeveloperTool;' not in text:
-              text = replace_once(
-                  text,
-                  'import com.shatteredpixel.shatteredpixeldungeon.items.BrokenSeal;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Item;\n',
-                  'import com.shatteredpixel.shatteredpixeldungeon.items.BrokenSeal;\nimport com.shatteredpixel.shatteredpixeldungeon.items.DeveloperTool;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Item;\n',
-                  'HeroClass DeveloperTool import')
-          if 'new DeveloperTool().collect();' not in text:
-              text = replace_once(
-                  text,
-                  '\t\tWaterskin waterskin = new Waterskin();\n\t\twaterskin.collect();\n\n\t\tnew ScrollOfIdentify().identify();\n',
-                  '\t\tWaterskin waterskin = new Waterskin();\n\t\twaterskin.collect();\n\n\t\tnew DeveloperTool().collect();\n\n\t\tnew ScrollOfIdentify().identify();\n',
-                  'HeroClass DeveloperTool collect')
+          if 'showModeSelection();' not in text:
+              text = replace_once(text,
+                  '\t\t\t\tif (GamesInProgress.selectedClass == null) return;\n\n'
+                  '\t\t\t\tDungeon.hero = null;\n'
+                  '\t\t\t\tDungeon.daily = Dungeon.dailyReplay = false;\n'
+                  '\t\t\t\tDungeon.initSeed();\n'
+                  '\t\t\t\tActionIndicator.clearAction();\n'
+                  '\t\t\t\tInterlevelScene.mode = InterlevelScene.Mode.DESCEND;\n\n'
+                  '\t\t\t\tGame.switchScene( InterlevelScene.class );\n',
+                  '\t\t\t\tif (GamesInProgress.selectedClass == null) return;\n'
+                  '\t\t\t\tshowModeSelection();\n',
+                  'HeroSelect start button')
+          if 'private void showModeSelection()' not in text:
+              methods = '''\tprivate void showModeSelection() {\n\t\tShatteredPixelDungeon.scene().addToFront(new WndOptions(\n\t\t\t\t"게임 모드",\n\t\t\t\t"일반 모드는 기존 녹픽던을 그대로 시작한다.\\n\\n"\n\t\t\t\t\t\t+ "실험실 모드는 아이템 구역, 넓은 추격 구역, 몬스터 소환 구역으로 "\n\t\t\t\t\t\t+ "나뉜 고정 테스트 맵을 처음부터 생성한다.",\n\t\t\t\t"일반 모드",\n\t\t\t\t"실험실 모드",\n\t\t\t\t"취소") {\n\t\t\t@Override\n\t\t\tprotected void onSelect(int index) {\n\t\t\t\tif (index == 0) startNewGame(false);\n\t\t\t\tif (index == 1) startNewGame(true);\n\t\t\t}\n\t\t});\n\t}\n\n\tprivate void startNewGame(boolean laboratory) {\n\t\tDungeon.hero = null;\n\t\tDungeon.daily = Dungeon.dailyReplay = false;\n\t\tDungeon.labMode = laboratory;\n\t\tDungeon.initSeed();\n\t\tActionIndicator.clearAction();\n\t\tInterlevelScene.mode = InterlevelScene.Mode.DESCEND;\n\n\t\tGame.switchScene(InterlevelScene.class);\n\t}\n\n'''
+              text = replace_once(text,
+                  '\tprivate void updateOptionsColor(){\n',
+                  methods + '\tprivate void updateOptionsColor(){\n',
+                  'HeroSelect mode methods')
+          if '\t\t\t\t\t\t\t\tDungeon.labMode = false;' not in text:
+              text = replace_once(text,
+                  '\t\t\t\t\t\t\t\tDungeon.hero = null;\n\t\t\t\t\t\t\t\tDungeon.daily = true;\n\t\t\t\t\t\t\t\tDungeon.initSeed();\n',
+                  '\t\t\t\t\t\t\t\tDungeon.hero = null;\n\t\t\t\t\t\t\t\tDungeon.daily = true;\n\t\t\t\t\t\t\t\tDungeon.labMode = false;\n\t\t\t\t\t\t\t\tDungeon.initSeed();\n',
+                  'HeroSelect daily Lab reset')
           p.write_text(text)
           PY
 
           if ! git diff --quiet -- \
-            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java \
-            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Belongings.java \
-            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/artifacts/Artifact.java \
-            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/HeroClass.java; then
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java \
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/levels/Level.java \
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/HeroSelectScene.java; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add \
-              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java \
-              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Belongings.java \
-              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/artifacts/Artifact.java \
-              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/HeroClass.java
-            git commit -m "feat: port SPD Lab developer and equipment hooks"
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Dungeon.java \
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/levels/Level.java \
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/scenes/HeroSelectScene.java
+            git commit -m "feat: port SPD Lab mode and LabLevel to v4.0"
             git push origin HEAD:spdlab-4.0-port
           fi
 
