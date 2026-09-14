@@ -66,7 +66,7 @@ public class Belongings implements Iterable<Item> {
 				//secondary weapons still occupy an inv. slot
 				cap--;
 			}
-			return cap;
+			return cap + 500;
 		}
 	}
 
@@ -209,6 +209,13 @@ public class Belongings implements Iterable<Item> {
 
 		secondWep = (KindOfWeapon) bundle.get(SECOND_WEP);
 		if (secondWep() != null)    secondWep().activate(owner);
+
+		for (Item i : backpack.items){
+			if (i instanceof KindofMisc && ((KindofMisc)i).labExtraEquipped()){
+				((KindofMisc)i).activate(owner);
+			}
+		}
+		owner.updateHT(false);
 
 		bundleRestoring = false;
 	}

@@ -116,7 +116,7 @@ public class Artifact extends KindofMisc {
 
 	@Override
 	public boolean isUpgradable() {
-		return false;
+		return level() < levelCap;
 	}
 
 	@Override

@@ -33,9 +33,38 @@ import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 import com.watabou.utils.Random;
+import com.watabou.utils.Bundle;
 
 
 public abstract class KindofMisc extends EquipableItem {
+
+	private static final String LAB_EXTRA_EQUIPPED = "lab_extra_equipped";
+	private boolean labExtraEquipped = false;
+
+	public boolean labExtraEquipped(){
+		return labExtraEquipped;
+	}
+
+	public boolean labEquipExtra(Hero hero){
+		if (hero == null || labExtraEquipped || isEquipped(hero)) return false;
+		labExtraEquipped = true;
+		activate(hero);
+		hero.updateHT(false);
+		updateQuickslot();
+		return true;
+	}
+
+	@Override
+	public void storeInBundle(Bundle bundle) {
+		super.storeInBundle(bundle);
+		bundle.put(LAB_EXTRA_EQUIPPED, labExtraEquipped);
+	}
+
+	@Override
+	public void restoreFromBundle(Bundle bundle) {
+		super.restoreFromBundle(bundle);
+		labExtraEquipped = bundle.getBoolean(LAB_EXTRA_EQUIPPED);
+	}
 
 	@Override
 	public boolean doEquip(final Hero hero) {
@@ -171,6 +200,13 @@ public abstract class KindofMisc extends EquipableItem {
 
 	@Override
 	public boolean doUnequip(Hero hero, boolean collect, boolean single) {
+		if (labExtraEquipped) {
+			labExtraEquipped = false;
+			updateQuickslot();
+			hero.updateHT(false);
+			return true;
+		}
+
 		if (super.doUnequip(hero, collect, single)){
 
 			if (hero.belongings.artifact == this) {
@@ -194,7 +230,8 @@ public abstract class KindofMisc extends EquipableItem {
 	public boolean isEquipped( Hero hero ) {
 		return hero != null && (hero.belongings.artifact() == this
 				|| hero.belongings.misc() == this
-				|| hero.belongings.ring() == this);
+				|| hero.belongings.ring() == this
+				|| labExtraEquipped);
 	}
 
 }
