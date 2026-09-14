@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-debug-apk:
@@ -16,6 +16,138 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Apply Task 4 Lab equipment hooks once
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              assert count == 1, f"{label}: expected exactly one anchor, found {count}"
+              return text.replace(old, new, 1)
+
+          # KindofMisc: persist/activate extra Lab equipment while preserving v4 slot logic.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java')
+          text = p.read_text()
+          if 'labExtraEquipped()' not in text:
+              text = replace_once(
+                  text,
+                  'import com.watabou.utils.Random;\n',
+                  'import com.watabou.utils.Random;\nimport com.watabou.utils.Bundle;\n',
+                  'KindofMisc Bundle import')
+              text = replace_once(
+                  text,
+                  'public abstract class KindofMisc extends EquipableItem {\n\n',
+                  'public abstract class KindofMisc extends EquipableItem {\n\n'
+                  '\tprivate static final String LAB_EXTRA_EQUIPPED = "lab_extra_equipped";\n'
+                  '\tprivate boolean labExtraEquipped = false;\n\n'
+                  '\tpublic boolean labExtraEquipped(){\n'
+                  '\t\treturn labExtraEquipped;\n'
+                  '\t}\n\n'
+                  '\tpublic boolean labEquipExtra(Hero hero){\n'
+                  '\t\tif (hero == null || labExtraEquipped || isEquipped(hero)) return false;\n'
+                  '\t\tlabExtraEquipped = true;\n'
+                  '\t\tactivate(hero);\n'
+                  '\t\thero.updateHT(false);\n'
+                  '\t\tupdateQuickslot();\n'
+                  '\t\treturn true;\n'
+                  '\t}\n\n'
+                  '\t@Override\n'
+                  '\tpublic void storeInBundle(Bundle bundle) {\n'
+                  '\t\tsuper.storeInBundle(bundle);\n'
+                  '\t\tbundle.put(LAB_EXTRA_EQUIPPED, labExtraEquipped);\n'
+                  '\t}\n\n'
+                  '\t@Override\n'
+                  '\tpublic void restoreFromBundle(Bundle bundle) {\n'
+                  '\t\tsuper.restoreFromBundle(bundle);\n'
+                  '\t\tlabExtraEquipped = bundle.getBoolean(LAB_EXTRA_EQUIPPED);\n'
+                  '\t}\n\n',
+                  'KindofMisc Lab state block')
+              text = replace_once(
+                  text,
+                  '\tpublic boolean doUnequip(Hero hero, boolean collect, boolean single) {\n\t\tif (super.doUnequip(hero, collect, single)){\n',
+                  '\tpublic boolean doUnequip(Hero hero, boolean collect, boolean single) {\n'
+                  '\t\tif (labExtraEquipped) {\n'
+                  '\t\t\tlabExtraEquipped = false;\n'
+                  '\t\t\tupdateQuickslot();\n'
+                  '\t\t\thero.updateHT(false);\n'
+                  '\t\t\treturn true;\n'
+                  '\t\t}\n\n'
+                  '\t\tif (super.doUnequip(hero, collect, single)){\n',
+                  'KindofMisc extra unequip')
+              text = replace_once(
+                  text,
+                  '\t\treturn hero != null && (hero.belongings.artifact() == this\n\t\t\t\t|| hero.belongings.misc() == this\n\t\t\t\t|| hero.belongings.ring() == this);\n',
+                  '\t\treturn hero != null && (hero.belongings.artifact() == this\n\t\t\t\t|| hero.belongings.misc() == this\n\t\t\t\t|| hero.belongings.ring() == this\n\t\t\t\t|| labExtraEquipped);\n',
+                  'KindofMisc isEquipped')
+              p.write_text(text)
+
+          # Belongings: +500 capacity and reactivate extra Lab equipment after load.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Belongings.java')
+          text = p.read_text()
+          if 'return cap + 500;' not in text:
+              text = replace_once(text, '\t\t\treturn cap;\n', '\t\t\treturn cap + 500;\n', 'Belongings capacity')
+          if 'labExtraEquipped()' not in text:
+              text = replace_once(
+                  text,
+                  '\t\tsecondWep = (KindOfWeapon) bundle.get(SECOND_WEP);\n\t\tif (secondWep() != null)    secondWep().activate(owner);\n\n\t\tbundleRestoring = false;\n',
+                  '\t\tsecondWep = (KindOfWeapon) bundle.get(SECOND_WEP);\n'
+                  '\t\tif (secondWep() != null)    secondWep().activate(owner);\n\n'
+                  '\t\tfor (Item i : backpack.items){\n'
+                  '\t\t\tif (i instanceof KindofMisc && ((KindofMisc)i).labExtraEquipped()){\n'
+                  '\t\t\t\t((KindofMisc)i).activate(owner);\n'
+                  '\t\t\t}\n'
+                  '\t\t}\n'
+                  '\t\towner.updateHT(false);\n\n'
+                  '\t\tbundleRestoring = false;\n',
+                  'Belongings restore Lab extras')
+          p.write_text(text)
+
+          # Artifact: restore Lab forced-upgrade support, respecting artifact level cap.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/artifacts/Artifact.java')
+          text = p.read_text()
+          if 'return level() < levelCap;' not in text:
+              text = replace_once(
+                  text,
+                  '\tpublic boolean isUpgradable() {\n\t\treturn false;\n\t}\n',
+                  '\tpublic boolean isUpgradable() {\n\t\treturn level() < levelCap;\n\t}\n',
+                  'Artifact isUpgradable')
+          p.write_text(text)
+
+          # HeroClass: give every Lab run the developer tool, as in the v3.3.8 Lab.
+          p = Path('core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/HeroClass.java')
+          text = p.read_text()
+          if 'import com.shatteredpixel.shatteredpixeldungeon.items.DeveloperTool;' not in text:
+              text = replace_once(
+                  text,
+                  'import com.shatteredpixel.shatteredpixeldungeon.items.BrokenSeal;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Item;\n',
+                  'import com.shatteredpixel.shatteredpixeldungeon.items.BrokenSeal;\nimport com.shatteredpixel.shatteredpixeldungeon.items.DeveloperTool;\nimport com.shatteredpixel.shatteredpixeldungeon.items.Item;\n',
+                  'HeroClass DeveloperTool import')
+          if 'new DeveloperTool().collect();' not in text:
+              text = replace_once(
+                  text,
+                  '\t\tWaterskin waterskin = new Waterskin();\n\t\twaterskin.collect();\n\n\t\tnew ScrollOfIdentify().identify();\n',
+                  '\t\tWaterskin waterskin = new Waterskin();\n\t\twaterskin.collect();\n\n\t\tnew DeveloperTool().collect();\n\n\t\tnew ScrollOfIdentify().identify();\n',
+                  'HeroClass DeveloperTool collect')
+          p.write_text(text)
+          PY
+
+          if ! git diff --quiet -- \
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java \
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Belongings.java \
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/artifacts/Artifact.java \
+            core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/HeroClass.java; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add \
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java \
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Belongings.java \
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/artifacts/Artifact.java \
+              core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/HeroClass.java
+            git commit -m "feat: port SPD Lab developer and equipment hooks"
+            git push origin HEAD:spdlab-4.0-port
+          fi
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
