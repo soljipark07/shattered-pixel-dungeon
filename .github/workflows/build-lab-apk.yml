@@ -51,7 +51,7 @@ jobs:
           before = Image.open('/tmp/v4-items-before.png').convert('RGBA')
           old_lab = Image.open('/tmp/lab-items.png').convert('RGBA')
           dst = Image.open(dst_path).convert('RGBA')
-          assert dst.size == before.size == old_lab.size == (256, 256), (dst.size, before.size, old_lab.size)
+          assert dst.size == before.size == old_lab.size == (256, 512), (dst.size, before.size, old_lab.size)
           boxes = [(208, 16, 224, 32), (224, 16, 240, 32)]
           for box in boxes:
               dst.paste(old_lab.crop(box), box[:2])
