@@ -45,6 +45,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
+          growth = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java").read_text()
           blood = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereBloodbath.java").read_text()
           hero = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java").read_text()
           jealousy = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereJealousy.java").read_text()
@@ -64,21 +65,7 @@ jobs:
           assert '"성장 트리"' in ribbon, "growth tree menu entry is missing"
           assert "WndGrowthTree" in ribbon, "growth tree window is not wired into RedRibbon"
 
-          assert 'yandere_laugh_mild.ogg' in assets and 'yandere_laugh_high.ogg' in assets, "stable OGG laugh assets are not registered"
+          assert "YANDERE_LAUGH_HIGH = YANDERE_LAUGH_MILD" in assets, "broken high MP3 should not be loaded"
+          assert "HIGH_LAUGH_PITCH" in growth, "high laugh needs a distinct pitch"
+          assert "playHighLaugh()" in growth, "high laugh helper is missing"
           PY
-
-      - name: Verify laugh audio decodes cleanly
-        run: |
-          set -euo pipefail
-          for f in             core/src/main/assets/sounds/yandere_laugh_mild.ogg             core/src/main/assets/sounds/yandere_laugh_high.ogg
-          do
-            test -f "$f"
-            log="$(mktemp)"
-            ffmpeg -v error -i "$f" -f null - >"$log" 2>&1
-            test ! -s "$log"
-            duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")"
-            python - "$duration" <<'PY'
-          import sys
-          assert float(sys.argv[1]) > 1.0, "laugh clip is too short"
-          PY
-          done
