@@ -839,12 +839,6 @@ public class Hero extends Char {
 		next();
 	}
 
-	@Override
-	public void next() {
-		float spent = Math.max(0f, cooldown());
-		super.next();
-		if (spent > 0f) YandereBloodbath.onHeroTimeSpent(spent);
-	}
 	
 	@Override
 	public boolean act() {
@@ -2692,8 +2686,11 @@ public class Hero extends Char {
 
 	@Override
 	public void next() {
-		if (isAlive())
+		if (isAlive()) {
+			float spent = Math.max(0f, cooldown());
 			super.next();
+			if (spent > 0f) YandereBloodbath.onHeroTimeSpent(spent);
+		}
 	}
 
 	public static interface Doom {
