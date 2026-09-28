@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
 import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.DriedRose;
 import com.watabou.utils.Bundle;
+import com.watabou.utils.Callback;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -228,17 +229,31 @@ public final class YandereJealousy {
         return false;
     }
 
-    private static void playJealousAttack(GrowthYandereAlly ally, Char target) {
-        if (ally == null || target == null || ally.sprite == null) return;
+    private static boolean playJealousAttack(final GrowthYandereAlly ally, final Char target) {
+        if (ally == null || target == null || ally.sprite == null) return false;
         ally.sprite.turnTo(ally.pos, target.pos);
         ally.sprite.showAlert();
-        ally.sprite.attack(target.pos);
+        ally.sprite.attack(target.pos, new Callback() {
+            @Override
+            public void call() {
+                finishJealousKill(ally, target);
+            }
+        });
+        return true;
     }
 
     private static void executeJealousKill(GrowthYandereAlly ally, Char target) {
         if (ally == null || target == null || !target.isAlive()) return;
 
-        playJealousAttack(ally, target);
+        // The actual removal waits for the attack animation to finish, so the
+        // jealousy execution is visible instead of the NPC vanishing instantly.
+        if (!playJealousAttack(ally, target)) {
+            finishJealousKill(ally, target);
+        }
+    }
+
+    private static void finishJealousKill(GrowthYandereAlly ally, Char target) {
+        if (ally == null || target == null || !target.isAlive()) return;
 
         // Shops have special cleanup semantics; fleeing removes the shop and
         // its sale state safely. Other NPCs, including the Rose ghost, are
