@@ -61,6 +61,8 @@ jobs:
           assert 'count == 1 ? "왜 쟤랑 얘기해? 나 여기 있는데."' in jealousy, "first NPC jealousy line still says 'again'"
           assert "HEART_ROSE_BUMP = 1" in jealousy, "one misplaced heart should not instantly kill Rose ghost"
           assert "playJealousAttack" in jealousy, "jealous execution should show an attack animation"
+          assert "sprite.attack(target.pos, new Callback()" in jealousy, "jealous kill must wait for the attack animation callback"
+          assert "finishJealousKill" in jealousy, "jealous kill completion helper is missing"
 
           assert '"성장 트리"' in ribbon, "growth tree menu entry is missing"
           assert "WndGrowthTree" in ribbon, "growth tree window is not wired into RedRibbon"
