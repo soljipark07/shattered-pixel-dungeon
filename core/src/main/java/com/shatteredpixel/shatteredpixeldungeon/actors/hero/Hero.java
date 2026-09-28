@@ -77,6 +77,8 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.hero.spells.Smite;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mimic;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereAlly;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereBloodbath;
+import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.YandereJealousy;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Monk;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Snake;
 import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Imp;
@@ -700,6 +702,7 @@ public class Hero extends Char {
 		}
 
 		if (dmg < 0) dmg = 0;
+		dmg = Math.round(dmg * RedRibbon.abandonmentDamageMultiplier(this));
 		return dmg;
 	}
 
@@ -737,6 +740,7 @@ public class Hero extends Char {
 		}
 
 		speed = AscensionChallenge.modifyHeroSpeed(speed);
+		speed *= RedRibbon.abandonmentMoveSpeedMultiplier(this);
 		
 		return speed;
 		
@@ -791,7 +795,7 @@ public class Hero extends Char {
 
 		if (!RingOfForce.fightingUnarmed(this)) {
 			
-			return delay * belongings.attackingWeapon().delayFactor( this );
+			return delay * belongings.attackingWeapon().delayFactor( this ) * RedRibbon.abandonmentAttackDelayMultiplier(this);
 			
 		} else {
 			//Normally putting furor speed on unarmed attacks would be unnecessary
@@ -809,7 +813,7 @@ public class Hero extends Char {
 				delay = ((Weapon)belongings.weapon).augment.delayFactor(delay);
 			}
 
-			return delay/speed;
+			return (delay/speed) * RedRibbon.abandonmentAttackDelayMultiplier(this);
 		}
 	}
 
@@ -1040,6 +1044,9 @@ public class Hero extends Char {
 			
 			ready();
 			sprite.turnTo( pos, ch.pos );
+			if (YandereJealousy.onHeroInteract(ch)) {
+				return true;
+			}
 			return ch.interact(this);
 			
 		} else {
@@ -2332,8 +2339,12 @@ public class Hero extends Char {
 	@Override
 	public void move(int step, boolean travelling) {
 		boolean wasHighGrass = Dungeon.level.map[step] == Terrain.HIGH_GRASS;
+		int oldPos = pos;
 
 		super.move( step, travelling);
+		if (travelling && Dungeon.level != null && oldPos != pos && Dungeon.level.adjacent(oldPos, pos)) {
+			YandereBloodbath.onHeroStep();
+		}
 		
 		if (!flying && travelling) {
 			if (Dungeon.level.water[pos]) {

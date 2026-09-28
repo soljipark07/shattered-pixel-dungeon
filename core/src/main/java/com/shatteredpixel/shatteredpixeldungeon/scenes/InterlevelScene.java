@@ -33,6 +33,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.Mob;
 import com.shatteredpixel.shatteredpixeldungeon.effects.ShadowBox;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.LostBackpack;
+import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.SkeletonKey;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Notes;
@@ -620,6 +621,7 @@ public class InterlevelScene extends PixelScene {
 	}
 
 	private void descend() throws IOException {
+		RedRibbon.beforeTransition();
 
 		if (Dungeon.hero == null) {
 			Mob.clearHeldAllies();
@@ -674,6 +676,7 @@ public class InterlevelScene extends PixelScene {
 
 	//TODO atm falling always just increments depth by 1, do we eventually want to roll it into the transition system?
 	private void fall() throws IOException {
+		RedRibbon.beforeTransition();
 		
 		Mob.holdAllies( Dungeon.level );
 		
@@ -691,6 +694,7 @@ public class InterlevelScene extends PixelScene {
 	}
 
 	private void ascend() throws IOException {
+		RedRibbon.beforeTransition();
 		if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {
 			//FIXME avoids holding allies when entering city quest area, this is very sloppy though
 			// perhaps holding allies could be a property of the transition?
@@ -715,6 +719,7 @@ public class InterlevelScene extends PixelScene {
 	}
 	
 	private void returnTo() throws IOException {
+		RedRibbon.beforeTransition();
 		Mob.holdAllies( Dungeon.level );
 		Dungeon.saveAll();
 

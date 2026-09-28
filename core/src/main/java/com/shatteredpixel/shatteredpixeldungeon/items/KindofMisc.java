@@ -46,11 +46,15 @@ public abstract class KindofMisc extends EquipableItem {
 	}
 
 	public boolean labEquipExtra(Hero hero){
-		if (hero == null || labExtraEquipped || isEquipped(hero)) return false;
+		if (labExtraEquipped || !(this instanceof Ring || this instanceof Artifact)) return false;
 		labExtraEquipped = true;
+		identify();
+		Talent.onItemEquipped(hero, this);
 		activate(hero);
+		cursedKnown = true;
+		if (cursed) equipCursed(hero);
 		hero.updateHT(false);
-		updateQuickslot();
+		Item.updateQuickslot();
 		return true;
 	}
 
@@ -202,8 +206,9 @@ public abstract class KindofMisc extends EquipableItem {
 	public boolean doUnequip(Hero hero, boolean collect, boolean single) {
 		if (labExtraEquipped) {
 			labExtraEquipped = false;
-			updateQuickslot();
-			hero.updateHT(false);
+			if (single) hero.spendAndNext(timeToEquip(hero));
+			else hero.spend(timeToEquip(hero));
+			Item.updateQuickslot();
 			return true;
 		}
 
