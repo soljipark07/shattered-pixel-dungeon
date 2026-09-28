@@ -1,0 +1,40 @@
+name: Verify Growth Port
+
+on:
+  push:
+    branches:
+      - spdlab-4.0-port
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-growth-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify growth profile and exact multi-equip behavior
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          growth = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/GrowthYandereAlly.java")
+          assert growth.exists(), "GrowthYandereAlly.java is missing"
+
+          ribbon = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/RedRibbon.java").read_text()
+          assert "PROFILE_GROWTH" in ribbon, "RedRibbon growth profile is missing"
+          assert "MAX_GROWTH_HEARTS = 48" in ribbon, "48-heart growth progression is missing"
+
+          misc = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/KindofMisc.java").read_text()
+          required = [
+              "identify();",
+              "Talent.onItemEquipped(hero, this);",
+              "cursedKnown = true;",
+              "if (cursed) equipCursed(hero);",
+              "hero.spendAndNext(timeToEquip(hero));",
+              "hero.spend(timeToEquip(hero));",
+          ]
+          for token in required:
+              assert token in misc, f"multi-equip behavior missing: {token}"
+          PY
