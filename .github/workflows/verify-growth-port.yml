@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Verify growth profile and exact multi-equip behavior
         run: |
           python - <<'PY'
@@ -38,3 +39,46 @@ jobs:
           for token in required:
               assert token in misc, f"multi-equip behavior missing: {token}"
           PY
+
+      - name: Verify requested yandere fixes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          blood = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereBloodbath.java").read_text()
+          hero = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/hero/Hero.java").read_text()
+          jealousy = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/actors/mobs/npcs/YandereJealousy.java").read_text()
+          ribbon = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/items/RedRibbon.java").read_text()
+          assets = Path("core/src/main/java/com/shatteredpixel/shatteredpixeldungeon/Assets.java").read_text()
+
+          assert "PITY_TURNS = 1000" in blood, "1000-turn bloodbath pity is missing"
+          assert "BASE_CHANCE = 0.0005f" in blood, "bloodbath base chance should start at 0.05%"
+          assert "BossHealthBar.isAssigned()" in blood, "boss battle pause guard is missing"
+          assert "eligibleTurns" in blood, "bloodbath eligible-turn counter is missing"
+          assert "YandereBloodbath.onHeroTimeSpent" in hero, "bloodbath must count all hero time, not movement only"
+
+          assert 'count == 1 ? "왜 쟤랑 얘기해? 나 여기 있는데."' in jealousy, "first NPC jealousy line still says 'again'"
+          assert "HEART_ROSE_BUMP = 1" in jealousy, "one misplaced heart should not instantly kill Rose ghost"
+          assert "playJealousAttack" in jealousy, "jealous execution should show an attack animation"
+
+          assert '"성장 트리"' in ribbon, "growth tree menu entry is missing"
+          assert "WndGrowthTree" in ribbon, "growth tree window is not wired into RedRibbon"
+
+          assert 'yandere_laugh_mild.ogg' in assets and 'yandere_laugh_high.ogg' in assets, "stable OGG laugh assets are not registered"
+          PY
+
+      - name: Verify laugh audio decodes cleanly
+        run: |
+          set -euo pipefail
+          for f in             core/src/main/assets/sounds/yandere_laugh_mild.ogg             core/src/main/assets/sounds/yandere_laugh_high.ogg
+          do
+            test -f "$f"
+            log="$(mktemp)"
+            ffmpeg -v error -i "$f" -f null - >"$log" 2>&1
+            test ! -s "$log"
+            duration="$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$f")"
+            python - "$duration" <<'PY'
+          import sys
+          assert float(sys.argv[1]) > 1.0, "laugh clip is too short"
+          PY
+          done
