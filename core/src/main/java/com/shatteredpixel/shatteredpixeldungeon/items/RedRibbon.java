@@ -13,6 +13,7 @@ import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSprite;
 import com.shatteredpixel.shatteredpixeldungeon.sprites.ItemSpriteSheet;
 import com.shatteredpixel.shatteredpixeldungeon.utils.GLog;
+import com.shatteredpixel.shatteredpixeldungeon.windows.WndGrowthTree;
 import com.shatteredpixel.shatteredpixeldungeon.windows.WndOptions;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.PathFinder;
@@ -344,6 +345,7 @@ public class RedRibbon extends Item {
                 "태세 변경",
                 "대화하기",
                 "유형 선택/보기",
+                "성장 트리",
                 "테스트/밸런스"
         ) {
             @Override
@@ -354,7 +356,11 @@ public class RedRibbon extends Item {
                     case 2: showModeMenu(); break;
                     case 3: doTalk(); break;
                     case 4: showProfileMenu(); break;
-                    case 5: showDebugMenu(); break;
+                    case 5:
+                        if (isGrowthProfile()) GameScene.show(new WndGrowthTree(growthHearts));
+                        else GLog.w("성장 트리는 성장형에서만 볼 수 있어.");
+                        break;
+                    case 6: showDebugMenu(); break;
                     default: break;
                 }
             }

@@ -838,6 +838,13 @@ public class Hero extends Char {
 		spend( time );
 		next();
 	}
+
+	@Override
+	public void next() {
+		float spent = Math.max(0f, cooldown());
+		super.next();
+		if (spent > 0f) YandereBloodbath.onHeroTimeSpent(spent);
+	}
 	
 	@Override
 	public boolean act() {
@@ -2339,12 +2346,8 @@ public class Hero extends Char {
 	@Override
 	public void move(int step, boolean travelling) {
 		boolean wasHighGrass = Dungeon.level.map[step] == Terrain.HIGH_GRASS;
-		int oldPos = pos;
 
 		super.move( step, travelling);
-		if (travelling && Dungeon.level != null && oldPos != pos && Dungeon.level.adjacent(oldPos, pos)) {
-			YandereBloodbath.onHeroStep();
-		}
 		
 		if (!flying && travelling) {
 			if (Dungeon.level.water[pos]) {

@@ -59,6 +59,7 @@ public class GrowthYandereAlly extends YandereAlly {
 
     private static final float HIGH_LAUGH_COOLDOWN = 70f;
     private static final float KILL_LAUGH_COOLDOWN = 12f;
+    private static final float HIGH_LAUGH_PITCH = 1.18f;
 
     private static final int DIALOGUE_OTHER = 0;
     private static final int DIALOGUE_GENERIC = 1;
@@ -106,6 +107,14 @@ public class GrowthYandereAlly extends YandereAlly {
     public int growthHearts() { return growthHearts; }
     public boolean isFullyAwakened() { return growthHearts >= HEART_FINAL_AWAKENING; }
 
+    private static void playMildLaugh() {
+        Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_MILD);
+    }
+
+    public static void playHighLaugh() {
+        Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH, 1f, HIGH_LAUGH_PITCH);
+    }
+
     public void configureGrowth(int hearts, int savedHP) {
         growthHearts = clampHearts(hearts);
         HT = growthMaxHP();
@@ -131,7 +140,7 @@ public class GrowthYandereAlly extends YandereAlly {
         if (isFullyAwakened()) {
             normalizeFinalAwakeningState();
             if (!wasFullyAwakened) {
-                Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);
+                playHighLaugh();
                 lastHighLaughClock = globalGrowthClock();
                 yell("사랑해. 사랑해 사랑해 사랑해 사랑해♡ 아하하하하하! 나도 알아! 이제 알아! 너도 나 사랑하는 거잖아!!");
             }
@@ -837,9 +846,6 @@ public class GrowthYandereAlly extends YandereAlly {
     if (now - lastHighLaughClock < HIGH_LAUGH_COOLDOWN) return;
 
     final boolean severeObsession = tier >= 3;
-    final String laughSound = severeObsession
-            ? Assets.Sounds.YANDERE_LAUGH_HIGH
-            : Assets.Sounds.YANDERE_LAUGH_MILD;
 
     float chance;
     if (severeObsession) {
@@ -856,7 +862,8 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     if (Random.Float() < chance) {
-        Sample.INSTANCE.play(laughSound);
+        if (severeObsession) playHighLaugh();
+        else playMildLaugh();
         lastHighLaughClock = now;
     }
 }
@@ -956,7 +963,8 @@ public class GrowthYandereAlly extends YandereAlly {
         float now = globalGrowthClock();
         if (now - lastKillLaughClock < KILL_LAUGH_COOLDOWN || Random.Float() >= chance) return;
 
-        Sample.INSTANCE.play(tier >= 3 ? Assets.Sounds.YANDERE_LAUGH_HIGH : Assets.Sounds.YANDERE_LAUGH_MILD);
+        if (tier >= 3) playHighLaugh();
+        else playMildLaugh();
         lastKillLaughClock = now;
     }
 

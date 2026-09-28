@@ -228,7 +228,7 @@ public class Assets {
 		public static final String SHEEP    = "sounds/sheep.mp3";
 		public static final String MINE    = "sounds/mine.mp3";
 		public static final String YANDERE_LAUGH_MILD = "sounds/yandere_laugh_mild.mp3";
-		public static final String YANDERE_LAUGH_HIGH = "sounds/yandere_laugh_high.mp3";
+		public static final String YANDERE_LAUGH_HIGH = YANDERE_LAUGH_MILD;
 
 		public static final String[] all = new String[]{
 				CLICK, BADGE, GOLD,

@@ -1,6 +1,5 @@
 package com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs;
 
-import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.actors.Char;
 import com.shatteredpixel.shatteredpixeldungeon.actors.buffs.Buff;
@@ -10,7 +9,6 @@ import com.shatteredpixel.shatteredpixeldungeon.items.RedRibbon;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.GameScene;
 import com.shatteredpixel.shatteredpixeldungeon.scenes.PixelScene;
 import com.shatteredpixel.shatteredpixeldungeon.ui.BossHealthBar;
-import com.watabou.noosa.audio.Sample;
 import com.watabou.utils.Bundle;
 import com.watabou.utils.Random;
 
@@ -18,26 +16,30 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 /**
- * Rare 48-heart event. Every real hero step gets a tiny chance to make the
- * fully-awakened growth yandere erase the ordinary hostile population of the
- * current floor. Boss combat is deliberately excluded.
+ * Fully-awakened growth-yandere massacre event.
+ *
+ * Only eligible hero time counts. Boss fights pause the counter completely.
+ * The roll begins at 0.05%, rises gradually, and has a hard pity at 1,000
+ * eligible turns. A floor can still only be cleared this way once.
  */
 public final class YandereBloodbath {
 
-    // 0.05% per actual travelling step: about one roll success per 2,000 steps.
-    private static final float STEP_CHANCE = 0.0005f;
+    public static final int PITY_TURNS = 1000;
+    private static final float BASE_CHANCE = 0.0005f;
+    private static final float PRE_PITY_MAX_CHANCE = 0.0010f;
     private static final int BLOOD_FLASH = 0xCC780000;
 
     private YandereBloodbath() {}
 
-    public static void onHeroStep() {
-        if (Dungeon.hero == null || Dungeon.level == null) return;
+    public static void onHeroTimeSpent(float time) {
+        if (time <= 0f || Dungeon.hero == null || Dungeon.level == null || !Dungeon.hero.isAlive()) return;
 
-        // No bloodbath rolls at all while a boss encounter is actively assigned.
+        // Boss combat does not advance the pity counter at all.
         if (BossHealthBar.isAssigned()) return;
 
         RedRibbon ribbon = RedRibbon.findRibbonForRun();
-        if (ribbon == null || !ribbon.isGrowthProfile() || ribbon.growthHearts() < GrowthYandereAlly.HEART_FINAL_AWAKENING) return;
+        if (ribbon == null || !ribbon.isGrowthProfile()
+                || ribbon.growthHearts() < GrowthYandereAlly.HEART_FINAL_AWAKENING) return;
 
         YandereAlly found = ribbon.findAlly();
         if (!(found instanceof GrowthYandereAlly) || !found.isAlive() || found.hostileToHero()) return;
@@ -47,17 +49,40 @@ public final class YandereBloodbath {
         Tracker tracker = Buff.affect(Dungeon.hero, Tracker.class);
         if (tracker == null || tracker.triggeredHere()) return;
 
-        ArrayList<Mob> victims = eligibleVictims(ally);
-        if (victims.isEmpty() || Random.Float() >= STEP_CHANCE) return;
+        tracker.partialTurn += time;
+        int rolls = (int)Math.floor(tracker.partialTurn);
+        if (rolls <= 0) return;
+        tracker.partialTurn -= rolls;
 
+        for (int i = 0; i < rolls; i++) {
+            tracker.eligibleTurns = Math.min(PITY_TURNS, tracker.eligibleTurns + 1);
+
+            ArrayList<Mob> victims = eligibleVictims(ally);
+            if (victims.isEmpty()) continue;
+
+            boolean pity = tracker.eligibleTurns >= PITY_TURNS;
+            if (!pity && Random.Float() >= chanceForTurn(tracker.eligibleTurns)) continue;
+
+            trigger(ally, victims, tracker);
+            return;
+        }
+    }
+
+    private static float chanceForTurn(int turn) {
+        if (turn >= PITY_TURNS) return 1f;
+        if (turn <= 1) return BASE_CHANCE;
+        float progress = (turn - 1f) / (PITY_TURNS - 2f);
+        return BASE_CHANCE + (PRE_PITY_MAX_CHANCE - BASE_CHANCE) * progress;
+    }
+
+    private static void trigger(GrowthYandereAlly ally, ArrayList<Mob> victims, Tracker tracker) {
         tracker.markHere();
+        tracker.eligibleTurns = 0;
+        tracker.partialTurn = 0f;
 
-        // The whole scene washes blood-red for roughly a second while the
-        // high-obsession laugh and massacre happen. This is intentionally a
-        // screen effect rather than permanent terrain recolouring.
         GameScene.flash(BLOOD_FLASH, false);
         PixelScene.shake(2.5f, 0.9f);
-        Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);
+        GrowthYandereAlly.playHighLaugh();
         ally.yell("아하하하하하하♡ 봐, 전부 조용해졌어! 이제 너 건드릴 것들 하나도 안 남았네♡");
 
         for (Mob mob : victims) {
@@ -67,9 +92,6 @@ public final class YandereBloodbath {
                 Splash.at(mob.pos, 0xAA0000, 12);
             }
 
-            // Use each mob's normal death path so loot/EXP/death hooks still run,
-            // but set HP to zero first so damage caps or invulnerability don't
-            // turn the event into a partial clear.
             mob.HP = 0;
             mob.die(ally);
         }
@@ -83,9 +105,6 @@ public final class YandereBloodbath {
         for (Mob mob : Dungeon.level.mobs.toArray(new Mob[0])) {
             if (mob == null || mob == ally || !mob.isAlive() || mob.alignment != Char.Alignment.ENEMY) continue;
 
-            // Bosses, minibosses, and boss-linked combat pieces are excluded even
-            // outside the active-boss-bar guard. This also keeps progression-
-            // critical set pieces from being deleted by the rare event.
             if (mob.properties().contains(Char.Property.BOSS)
                     || mob.properties().contains(Char.Property.MINIBOSS)
                     || mob.properties().contains(Char.Property.BOSS_MINION)) continue;
@@ -98,7 +117,12 @@ public final class YandereBloodbath {
     public static class Tracker extends Buff {
 
         private static final String TRIGGERED_FLOORS = "yandere_bloodbath_triggered_floors";
+        private static final String ELIGIBLE_TURNS = "yandere_bloodbath_eligible_turns";
+        private static final String PARTIAL_TURN = "yandere_bloodbath_partial_turn";
+
         private final HashSet<String> triggeredFloors = new HashSet<>();
+        private int eligibleTurns = 0;
+        private float partialTurn = 0f;
 
         {
             announced = false;
@@ -121,6 +145,8 @@ public final class YandereBloodbath {
         public void storeInBundle(Bundle bundle) {
             super.storeInBundle(bundle);
             bundle.put(TRIGGERED_FLOORS, triggeredFloors.toArray(new String[0]));
+            bundle.put(ELIGIBLE_TURNS, eligibleTurns);
+            bundle.put(PARTIAL_TURN, partialTurn);
         }
 
         @Override
@@ -133,6 +159,10 @@ public final class YandereBloodbath {
                     for (String floor : floors) if (floor != null) triggeredFloors.add(floor);
                 }
             }
+            eligibleTurns = bundle.contains(ELIGIBLE_TURNS)
+                    ? Math.max(0, Math.min(PITY_TURNS, bundle.getInt(ELIGIBLE_TURNS))) : 0;
+            partialTurn = bundle.contains(PARTIAL_TURN)
+                    ? Math.max(0f, Math.min(0.999f, bundle.getFloat(PARTIAL_TURN))) : 0f;
         }
     }
 }

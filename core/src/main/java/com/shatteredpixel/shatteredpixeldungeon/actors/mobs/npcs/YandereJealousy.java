@@ -28,7 +28,7 @@ public final class YandereJealousy {
     private static final int ROSE_KILL = 3;
 
     private static final int HEART_NPC_BUMP = 5;
-    private static final int HEART_ROSE_BUMP = 3;
+    private static final int HEART_ROSE_BUMP = 1;
     private static final int HEART_ENEMY_RAGE = 5;
 
     private YandereJealousy() {}
@@ -173,7 +173,7 @@ public final class YandereJealousy {
         } else {
             ally.yell(tier >= 3
                     ? "또 쟤한테 가? 나 보고 있는데도? 진짜 기분 더럽네."
-                    : count == 1 ? "왜 또 쟤랑 얘기해? 나 여기 있는데."
+                    : count == 1 ? "왜 쟤랑 얘기해? 나 여기 있는데."
                     : "또 쟤야? 나 보고도 굳이 쟤한테 가야 해?");
         }
         return false;
@@ -200,7 +200,7 @@ public final class YandereJealousy {
                     : "필요한 것만 사고 와. 계속 저 사람이랑 붙어 있으면 나 진짜 화나.");
         } else {
             ally.yell(count == 1
-                    ? "물건만 사고 와. 왜 자꾸 저 사람이랑 말 섞어?"
+                    ? "물건만 사고 와. 저 사람이랑 오래 말 섞지 마."
                     : "또 저 사람이야? 빨리 끝내고 나한테 와.");
         }
         return false;
@@ -222,19 +222,23 @@ public final class YandereJealousy {
         } else {
             ally.yell(tier >= 4
                     ? "얘가 날 사랑하는 건 이미 알아♡ 근데 쟤가 왜 네 옆에 붙어 있어?"
-                    : tier >= 3 ? "또 걔야?! 걔 보기 싫다고! 지금 당장 떨어져!"
-                    : "또 걔야? 하지 마. 진짜로. 걔 보기 싫어.");
+                    : tier >= 3 ? "걔 보기 싫어! 지금 당장 떨어져!"
+                    : "걔한테 가는 거야? 하지 마. 진짜로. 걔 보기 싫어.");
         }
         return false;
+    }
+
+    private static void playJealousAttack(GrowthYandereAlly ally, Char target) {
+        if (ally == null || target == null || ally.sprite == null) return;
+        ally.sprite.turnTo(ally.pos, target.pos);
+        ally.sprite.showAlert();
+        ally.sprite.attack(target.pos);
     }
 
     private static void executeJealousKill(GrowthYandereAlly ally, Char target) {
         if (ally == null || target == null || !target.isAlive()) return;
 
-        if (ally.sprite != null) {
-            ally.sprite.turnTo(ally.pos, target.pos);
-            ally.sprite.showAlert();
-        }
+        playJealousAttack(ally, target);
 
         // Shops have special cleanup semantics; fleeing removes the shop and
         // its sale state safely. Other NPCs, including the Rose ghost, are
