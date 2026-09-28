@@ -68,6 +68,7 @@ jobs:
           assert "WndGrowthTree" in ribbon, "growth tree window is not wired into RedRibbon"
 
           assert "YANDERE_LAUGH_HIGH = YANDERE_LAUGH_MILD" in assets, "broken high MP3 should not be loaded"
-          assert "HIGH_LAUGH_PITCH" in growth, "high laugh needs a distinct pitch"
+          assert "HIGH_LAUGH_PITCH" not in growth, "high laugh pitch must not be modified"
           assert "playHighLaugh()" in growth, "high laugh helper is missing"
+          assert "Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);" in growth, "high laugh must play at original pitch"
           PY
