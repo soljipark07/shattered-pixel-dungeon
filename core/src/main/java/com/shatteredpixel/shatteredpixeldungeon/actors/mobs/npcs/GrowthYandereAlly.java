@@ -59,7 +59,6 @@ public class GrowthYandereAlly extends YandereAlly {
 
     private static final float HIGH_LAUGH_COOLDOWN = 70f;
     private static final float KILL_LAUGH_COOLDOWN = 12f;
-    private static final float HIGH_LAUGH_PITCH = 1.18f;
 
     private static final int DIALOGUE_OTHER = 0;
     private static final int DIALOGUE_GENERIC = 1;
@@ -112,7 +111,7 @@ public class GrowthYandereAlly extends YandereAlly {
     }
 
     public static void playHighLaugh() {
-        Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH, 1f, HIGH_LAUGH_PITCH);
+        Sample.INSTANCE.play(Assets.Sounds.YANDERE_LAUGH_HIGH);
     }
 
     public void configureGrowth(int hearts, int savedHP) {
