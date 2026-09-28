@@ -135,6 +135,11 @@ public class RipperDemon extends Mob {
 	private int leapPos = -1;
 	private float leapCooldown = 0;
 
+	// Growth-yandere smart dodge reads the same targeted leap cell.
+	public boolean leapThreatens(int cell) {
+		return leapPos != -1 && leapPos == cell;
+	}
+
 	public class Hunting extends Mob.Hunting {
 
 		@Override

@@ -87,6 +87,13 @@ public class Eye extends Mob {
 	private int beamCooldown;
 	public boolean beamCharged;
 
+	// Growth-yandere smart dodge uses the exact locked beam path.
+	public boolean chargedBeamThreatens(int cell) {
+		if (!beamCharged || beamTarget == -1) return false;
+		Ballistica aimed = new Ballistica(pos, beamTarget, Ballistica.STOP_SOLID);
+		return aimed.subPath(1, aimed.dist).contains(cell);
+	}
+
 	@Override
 	protected boolean canAttack( Char enemy ) {
 
