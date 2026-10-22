@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0"/>
+<meta name="theme-color" content="#111921"/>
+<title>녹픽던 장신구 시드 검사기 · 4.0.2</title>
+<style>
+:root{color-scheme:dark;--bg:#101922;--panel:#19252e;--muted:#9aadb9;--text:#f5f5f1;--line:#344651;--accent:#dcd29e;--green:#a1e3b5;--red:#f5aaab;--sprite-url:none}
+*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;font-family:system-ui,-apple-system,'Noto Sans KR','Malgun Gothic',sans-serif;background:radial-gradient(ellipse at top,#263940 0%,transparent 45%),var(--bg);color:var(--text);min-height:100vh}main{width:min(530px,100%);margin:0 auto;padding:32px 19px 60px}
+.eyebrow{font-size:11px;letter-spacing:.18em;font-weight:750;color:var(--accent);margin-bottom:12px}.mast{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}h1{font-size:clamp(25px,6.8vw,33px);letter-spacing:-.05em;line-height:1.18;margin:0 0 10px}h1 span{color:#e5d5a0}.version{font-size:11px;color:var(--muted);white-space:nowrap;border:1px solid var(--line);border-radius:99px;padding:7px 11px;margin-top:5px}.intro{font-size:14px;color:var(--muted);line-height:1.7;margin:0 0 29px}
+label{display:block;font-size:13px;color:#d3dee3;margin:0 0 9px;font-weight:650}.inputwrap{display:flex;align-items:center;border:1px solid #6b7469;border-radius:15px;background:#1c2a32;padding:5px 6px 5px 16px;box-shadow:0 10px 22px #0002}.inputwrap:focus-within{border-color:#e7dca6;box-shadow:0 0 0 3px #e7dca621}input{min-width:0;flex:1;background:none;border:none;color:#fff;font:600 19px/1.3 ui-monospace,Consolas,monospace;letter-spacing:.05em;outline:none;padding:13px 0}input::placeholder{color:#748a95;font-size:16px}.clear{border:0;background:#364550;color:#cbd6db;padding:9px 12px;border-radius:10px;cursor:pointer;font-weight:700}.buttons{display:flex;gap:10px;margin-top:11px}button{font:inherit;cursor:pointer}.mainbutton{width:100%;border:0;background:#ddd3a6;color:#192025;border-radius:13px;padding:15px 12px;font-size:15px;font-weight:850}.mainbutton:active{filter:brightness(.85)}.hint{font-size:12px;color:var(--muted);margin-top:11px;line-height:1.7}.error{margin-top:15px;color:#ffc6c6;font-size:13px}#results{margin-top:28px}.result-head{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:15px}.result-head h2{font-size:18px;margin:0;letter-spacing:-.03em}.status{padding:10px 13px;border-radius:13px;font-size:13px;font-weight:750;line-height:1.5;border:1px solid #566470;background:#23313b}.status.hit{color:var(--green);border-color:#557d63;background:#21392f}.status.miss{color:#d7dfe4}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{border:1px solid var(--line);border-radius:15px;background:linear-gradient(155deg,#202e37,#18232c);min-height:155px;padding:15px 12px 13px;text-align:center;position:relative}.card.hit{border-color:#75b588;box-shadow:inset 0 0 0 1px #75b58850}.num{position:absolute;left:13px;top:10px;color:#7f9aab;font-size:11px}.tag{font-size:10px;position:absolute;right:10px;top:10px;color:#a9f2b3;font-weight:800}.iconwell{height:58px;margin:6px auto 11px;display:flex;align-items:center;justify-content:center}.sprite{width:48px;height:48px;image-rendering:pixelated;background-image:var(--sprite-url);background-repeat:no-repeat;background-size:768px 1536px;display:none;filter:drop-shadow(1px 3px 1px #0007)}.sprite-ready .sprite{display:block}.fallback{font-size:31px}.sprite-ready .fallback{display:none}.name{font-size:14px;font-weight:750;letter-spacing:-.045em;line-height:1.45}.en{font-size:10px;color:#8ba1ae;margin-top:4px;line-height:1.25}.smallline{font-size:12px;color:#9fabb5;margin-top:15px;line-height:1.65}.copy{border:1px solid #4f6572;background:#253641;color:#d5e4e9;border-radius:10px;font-size:12px;padding:9px 12px}.footer{font-size:11px;color:#758c9a;margin-top:36px;line-height:1.7}.footer a{color:#afbfc3;text-decoration:underline}#sourcelabel{font-size:11px;color:var(--muted);margin:9px 0 0}@media(max-width:370px){main{padding:25px 13px}.card{padding:14px 7px}.name{font-size:13px}input{font-size:16px}}
+</style>
+</head>
+<body><main>
+  <div class="eyebrow">SHATTERED PIXEL DUNGEON</div>
+  <div class="mast"><h1>장신구 <span>시드 검사기</span></h1><div class="version">정식 v4.0.2</div></div>
+  <p class="intro">녹픽던 시드를 붙여넣으면 마법의 촉매제에서 등장하는 장신구 후보 4개를 미리 보여줘.</p>
+  <form id="seed-form" autocomplete="off">
+    <label for="seed">던전 시드</label>
+    <div class="inputwrap"><input id="seed" name="seed" placeholder="ABC-DEF-GHI" spellcheck="false" autocapitalize="characters" enterkeyhint="go"/><button type="button" class="clear" id="clear" aria-label="입력 지우기">지우기</button></div>
+    <div class="buttons"><button class="mainbutton" type="submit">장신구 4개 확인하기 →</button></div>
+    <div class="hint">9자리 영문 시드, 3-3-3 시드, 숫자 시드 또는 사용자 지정 텍스트 지원</div>
+    <div id="error" class="error" role="alert" hidden></div>
+  </form>
+  <section id="results" hidden aria-live="polite">
+    <div class="result-head"><h2>이번 시드의 장신구</h2><button id="copy" class="copy" type="button">결과 복사</button></div>
+    <div id="status" class="status"></div>
+    <div id="cards" class="cards" style="margin-top:13px"></div>
+    <div class="smallline">후보는 원본의 장신구 추첨 순서로 표시돼. 게임에서 이전에 장신구 추첨을 별도로 소비한 특수 상황은 예외일 수 있어.</div>
+  </section>
+  <footer class="footer">원본 게임 코드를 기준으로 한 비공식 도구 · 게임 데이터를 변경하지 않아.<br/>
+  게임: © Evan Debenham / Shattered Pixel Dungeon (GPL-3.0)<br/>
+  아이템 이미지: © Shattered Pixel Dungeon 기여자 · CC BY-SA 4.0<br/>
+  <a href="https://github.com/00-Evan/shattered-pixel-dungeon/tree/v4.0.2" target="_blank" rel="noopener">공식 v4.0.2 소스</a><div id="sourcelabel">이미지를 불러오는 중…</div></footer>
+</main>
+<script>
+// Shattered Pixel Dungeon v4.0.2 seed / trinket predictor.
+// Reference: Dungeon.init, ItemStatusHandler, SpecialRoom, SecretRoom,
+// Generator.fullReset, Generator.random(TRINKET), com.watabou.utils.Random.
+(function(root){
+ 'use strict';
+ const MASK48=(1n<<48n)-1n, MASK64=(1n<<64n)-1n;
+ const TOTAL=5429503678976n;
+ const A=0xbea225f9eb34556dn;
+ const enc64=x=>BigInt.asUintN(64,x);
+ function scrambleSeed(seed){
+   let x=enc64(seed); x^=x>>32n; x=enc64(x*A);
+   x^=x>>29n; x=enc64(x*A); x^=x>>32n; x=enc64(x*A);
+   x^=x>>29n; return x;
+ }
+ class JavaRandom{
+   constructor(seed){this.seed=(scrambleSeed(seed)^0x5deece66dn)&MASK48;}
+   next(bits){this.seed=(this.seed*0x5deece66dn+0xbn)&MASK48;return Number(this.seed>>(48n-BigInt(bits)));}
+   nextInt(bound){
+     if(!(bound>0)) return 0;
+     if((bound & (bound-1))===0) return Number((BigInt(bound)*BigInt(this.next(31)))>>31n);
+     let bits,val;
+     do{bits=this.next(31);val=bits%bound;}while((bits-val+(bound-1))>2147483647);
+     return val;
+   }
+   nextFloat(){return this.next(24)/16777216;}
+   nextLong(){let a=BigInt.asIntN(32,BigInt(this.next(32)));let b=BigInt.asIntN(32,BigInt(this.next(32)));return BigInt.asIntN(64,(a<<32n)+b);}
+ }
+ function codeToSeed(text){
+   let code=text;
+   if(code.length===11&&code[3]==='-'&&code[7]==='-')code=code.toUpperCase();
+   code=code.replace(/[-\s]/g,'');
+   if(!/^[A-Z]{9}$/.test(code))throw Error('not a code');
+   let n=0n;for(let i=0;i<9;i++)n=n*26n+BigInt(code.charCodeAt(i)-65);
+   return n;
+ }
+ function seedFromText(text){
+   if(!text)throw Error('시드를 입력해 줘.');
+   try{return codeToSeed(text);}catch(e){}
+   const ns=text.replace(/\s/g,'');
+   if(/^[+-]?\d+$/.test(ns)){
+     let n=BigInt(ns);if(n>=-(1n<<63n)&&n<=(1n<<63n)-1n)return n%TOTAL;
+   }
+   let h=0n;
+   // Java strings iterate UTF-16 code units, same as JS .charCodeAt
+   for(let i=0;i<text.length;i++)h=BigInt.asIntN(64,h*31n+BigInt(text.charCodeAt(i)));
+   if(h<0)h+= (1n<<63n)-1n;
+   return h%TOTAL;
+ }
+ const names=[
+   '쥐 두개골','양피지 조각','씨앗 화석','신비로운 수정','이끼 덩어리',
+   '차원의 해시계','열 세 잎 클로버','함정 작동 장치','미믹 이빨',
+   '경이로운 송진','영원의 눈','소금 큐브','피의 유리병',
+   '망각의 파편','혼돈의 향로','족제비 터럭','깨진 망원경'];
+ const eng=['Rat Skull','Parchment Scrap','Petrified Seed','Exotic Crystals','Mossy Clump','Dimensional Sundial','Thirteen-Leaf Clover','Trap Mechanism','Mimic Tooth','Wondrous Resin','Eye of Newt','Salt Cube','Vial of Blood','Shard of Oblivion','Chaotic Censer','Ferret Tuft','Cracked Spyglass'];
+ function shuffleRandomCalls(r,n){for(let i=n;i>1;i--)r.nextInt(i);} // java.util.Collections.shuffle
+ function getTrinketSeed(seed){
+   const r=new JavaRandom(seed+1n);
+   for(let i=12;i>0;i--)r.nextInt(i); // Scroll.initLabels
+   for(let i=12;i>0;i--)r.nextInt(i); // Potion.initColors
+   for(let i=12;i>0;i--)r.nextInt(i); // Ring.initGems
+   shuffleRandomCalls(r,9);  // SpecialRoom runEquipSpecials
+   shuffleRandomCalls(r,10); // SpecialRoom runConsSpecials
+   for(let i=0;i<5;i++)r.nextFloat(); // SecretRoom region secrets
+   shuffleRandomCalls(r,12); // SecretRoom runSecrets
+   r.nextInt(2); // Generator.fullReset first/second deck
+   return r.nextLong(); // Category.TRINKET.seed: first category
+ }
+ function predict(seedText){
+   const raw=seedFromText(seedText);
+   const gseed=getTrinketSeed(raw);
+   const probs=Array(17).fill(1);
+   const result=[];
+   for(let dropped=0;dropped<4;dropped++){
+      const r=new JavaRandom(gseed);
+      for(let n=0;n<dropped;n++)r.nextLong();
+      let sum=0;for(const w of probs)sum+=w;
+      const value=r.nextFloat()*sum;
+      let acc=0,chosen=-1;
+      for(let n=0;n<probs.length;n++){acc+=probs[n];if(value<acc){chosen=n;break;}}
+      if(chosen<0)throw Error('장신구 계산에 실패했어.');
+      probs[chosen]-=1; result.push({idx:chosen,name:names[chosen],en:eng[chosen],mimic:chosen===8});
+   }
+   return {items:result,hasMimic:result.some(x=>x.mimic),numericSeed:raw.toString(),innerSeed:gseed.toString()};
+ }
+ root.SPDSeed={predict,seedFromText,JavaRandom,getTrinketSeed,names};
+})(typeof window!=='undefined'?window:globalThis);
+
+</script>
+<script>
+(function(){
+'use strict';
+const input=document.getElementById('seed'),form=document.getElementById('seed-form');
+const result=document.getElementById('results'),status=document.getElementById('status'),cards=document.getElementById('cards'),err=document.getElementById('error');
+const atlas='https://raw.githubusercontent.com/00-Evan/shattered-pixel-dungeon/v4.0.2/core/src/main/assets/sprites/items.png';
+function setAtlas(url,text){document.documentElement.style.setProperty('--sprite-url',`url("${url}")`);document.body.classList.add('sprite-ready');document.getElementById('sourcelabel').textContent=text;}
+const localImage=new Image();localImage.onload=()=>setAtlas('items.png','이미지: 게임 원본 · 오프라인 사용 가능');
+localImage.onerror=()=>{const img=new Image();img.onload=()=>setAtlas(atlas,'이미지: 게임 원본 · 인터넷에서 불러옴');img.onerror=()=>{document.getElementById('sourcelabel').textContent='이미지 연결 실패: 아이콘 대신 기호 표시 중';};img.src=atlas;};
+localImage.src='items.png';
+const em=['☠️','📜','🌰','💎','🌿','☀️','🍀','⚙️','🦷','🪵','👁️','🧊','🧪','🔮','🏺','🧶','🔭'];
+let current=null;
+function render(){
+ const v=input.value.trim();if(!v){err.hidden=false;err.textContent='시드를 입력해 줘.';result.hidden=true;return;}
+ try{current=SPDSeed.predict(v);err.hidden=true;result.hidden=false;
+  status.className='status '+(current.hasMimic?'hit':'miss');
+  status.textContent=current.hasMimic?'✓ 미믹 이빨 발견! 이 시드에 등장해.':'— 이 시드에는 미믹 이빨이 없어.';
+  cards.innerHTML='';
+  current.items.forEach((item,i)=>{
+   const el=document.createElement('div');el.className='card'+(item.mimic?' hit':'');
+   const slot=17*16+i; // sprites: row 18, x=1 (1-based); item index wraps at 16
+   const px=(item.idx%16)*16*3,py=(17+Math.floor(item.idx/16))*16*3;
+   el.innerHTML=`<span class="num">0${i+1}</span>${item.mimic?'<span class="tag">TARGET ✓</span>':''}<div class="iconwell"><div class="sprite" style="background-position:-${px}px -${py}px"></div><span class="fallback" aria-hidden="true">${em[item.idx]}</span></div><div class="name"></div><div class="en"></div>`;
+   el.querySelector('.name').textContent=item.name;el.querySelector('.en').textContent=item.en;cards.appendChild(el);
+  });
+  result.scrollIntoView({behavior:'smooth',block:'nearest'});
+ }catch(e){err.hidden=false;err.textContent='시드를 계산하지 못했어: '+e.message;result.hidden=true;}
+}
+form.addEventListener('submit',e=>{e.preventDefault();render();});
+document.getElementById('clear').addEventListener('click',()=>{input.value='';result.hidden=true;err.hidden=true;input.focus();});
+document.getElementById('copy').addEventListener('click',async e=>{if(!current)return;const text=`녹픽던 4.0.2 / ${input.value.trim()}\n${current.items.map((x,i)=>(i+1)+'. '+x.name).join('\n')}\n미믹 이빨: ${current.hasMimic?'있음':'없음'}`;let ok=false;try{await navigator.clipboard.writeText(text);ok=true;}catch(ex){const a=document.createElement('textarea');a.value=text;a.style.position='fixed';a.style.opacity=0;document.body.appendChild(a);a.select();try{ok=document.execCommand('copy');}catch(ex2){}a.remove();}e.target.textContent=ok?'복사 완료 ✓':'복사 불가';setTimeout(()=>e.target.textContent='결과 복사',1400);});
+})();
+</script>
+</body></html>
