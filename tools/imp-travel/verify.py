@@ -2,6 +2,7 @@
 """Compile real game sources and run headless regression without requiring Android SDK."""
 import argparse
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import urllib.request
@@ -19,7 +20,7 @@ DEPS = {
 }
 
 parser = argparse.ArgumentParser()
-parser.add_argument('mode', choices=['reference', 'check', 'start', 'visits', 'no-free-badge', 'landing', 'suite'])
+parser.add_argument('mode', choices=['reference', 'check', 'start', 'visits', 'no-free-badge', 'landing', 'suite', 'analyzer'])
 parser.add_argument('--source-root', type=Path, default=ROOT)
 parser.add_argument('--fixtures', type=Path, default=ROOT / 'build/imp-regression/upstream.json')
 args = parser.parse_args()
@@ -43,6 +44,17 @@ argfile.write_text('\n'.join('"' + str(p) + '"' for p in sources))
 subprocess.run(['java', '-jar', str(deps / 'ecj.jar'), '-11', '-encoding', 'UTF-8', '-warn:none',
                 '-cp', classpath, '-d', str(out), '@' + str(argfile)], check=True)
 runtime = os.pathsep.join([str(out), str(args.source_root / 'core/src/main/assets'), classpath])
+if args.mode == 'analyzer':
+    oracle_sources = sorted((ROOT / 'tools/imp-travel/oracle').glob('*.java'))
+    subprocess.run(['java', '-jar', str(deps / 'ecj.jar'), '-17', '-encoding', 'UTF-8', '-warn:none',
+                    '-cp', runtime, '-d', str(out), *map(str, oracle_sources)], check=True)
+    node = os.environ.get('CODEX_PRIMARY_RUNTIME_NODE') or shutil.which('node')
+    if not node:
+        raise RuntimeError('Node.js is required for direct analyzer comparison')
+    subprocess.run(['java', '-cp', runtime, 'com.shatteredpixel.shatteredpixeldungeon.AnalyzerExportLauncher',
+                    '--check-artifact-guard'], check=True)
+    subprocess.run([node, str(ROOT / 'tools/imp-travel/compare-analyzer.mjs'), '--classpath', runtime], check=True)
+    raise SystemExit(0)
 modes = ['start', 'visits', 'no-free-badge', 'landing', 'check'] if args.mode == 'suite' else [args.mode]
 for mode in modes:
     subprocess.run(['java', '-Xmx1500m', '-cp', runtime, 'ImpTravelRegression',

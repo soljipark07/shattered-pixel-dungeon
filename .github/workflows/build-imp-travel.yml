@@ -29,6 +29,8 @@ jobs:
           git archive 57a4e06a4caf162446d1c28caa7983f0493fecf0 | tar -x -C build/imp-regression/upstream-source
           python3 tools/imp-travel/verify.py reference --source-root build/imp-regression/upstream-source
           python3 tools/imp-travel/verify.py suite
+      - name: Compare directly with the user's analyzer
+        run: python3 tools/imp-travel/verify.py analyzer
       - name: Build Android APK
         run: |
           chmod +x gradlew
