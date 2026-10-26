@@ -35,6 +35,10 @@ public class ImpTravelRegression {
             Game.version = "4.0.2";
             Game.versionCode = 922;
             GamesInProgress.curSlot = 1;
+            // These upstream tables are keyed by Class identity hashes. Initialize them
+            // in identical harness context before either run allocates its start items.
+            Class.forName("com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLaboratoryRoom");
+            Class.forName("com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLibraryRoom");
             // Tutorial placement deliberately uses an unseeded RNG in upstream.
             // Use the same completed journal in both builds to compare seeded content.
             SPDSettings.intro(false);
