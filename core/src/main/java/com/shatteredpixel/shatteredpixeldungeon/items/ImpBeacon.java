@@ -20,6 +20,7 @@ public class ImpBeacon extends Item {
     public static final String AC_FIRST = "FIRST";
     private int impDepth = -1;
     private int impCell = -1;
+    private boolean strengthRelocated = true;
     private final HashSet<Integer> visitedFloors = new HashSet<>();
     private final HashSet<Integer> remainsFloors = new HashSet<>();
 
@@ -38,6 +39,8 @@ public class ImpBeacon extends Item {
     public boolean visitFloor(int depth) { return visitedFloors.add(depth); }
 
     public int destinationCell() { return impCell; }
+
+    public boolean relocatesStrength() { return strengthRelocated; }
 
     public boolean isPreparedFloor(int depth) { return depth >= 1 && depth <= impDepth; }
 
@@ -91,6 +94,7 @@ public class ImpBeacon extends Item {
         super.storeInBundle(bundle);
         bundle.put("imp_depth", impDepth);
         bundle.put("imp_cell", impCell);
+        bundle.put("strength_relocated", strengthRelocated);
         int[] visited = new int[visitedFloors.size()];
         int index = 0;
         for (int depth : visitedFloors) visited[index++] = depth;
@@ -106,6 +110,8 @@ public class ImpBeacon extends Item {
         super.restoreFromBundle(bundle);
         impDepth = bundle.contains("imp_depth") ? bundle.getInt("imp_depth") : -1;
         impCell = bundle.contains("imp_cell") ? bundle.getInt("imp_cell") : -1;
+        // Previous APKs did not grant strength potions; keep their remaining natural drops.
+        strengthRelocated = bundle.getBoolean("strength_relocated");
         visitedFloors.clear();
         if (bundle.contains("visited_floors")) {
             for (int depth : bundle.getIntArray("visited_floors")) visitedFloors.add(depth);

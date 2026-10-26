@@ -5,6 +5,7 @@ import com.shatteredpixel.shatteredpixeldungeon.actors.mobs.npcs.Imp;
 import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.ImpBeacon;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.watabou.utils.Bundle;
@@ -23,11 +24,14 @@ public final class ImpTravel {
     }
 
     /** Called only after all original generation and placement RNG has completed. */
-    public static void removeNaturalUpgrades(Level level) {
+    public static void removeNaturalStartingItems(Level level) {
+        ImpBeacon beacon = Dungeon.hero == null ? null : Dungeon.hero.belongings.getItem(ImpBeacon.class);
+        boolean removeStrength = beacon != null && beacon.relocatesStrength();
         for (Heap heap : level.heaps.valueList()) {
             Iterator<Item> items = heap.items.iterator();
             while (items.hasNext()) {
-                if (items.next() instanceof ScrollOfUpgrade) items.remove();
+                Item item = items.next();
+                if (item instanceof ScrollOfUpgrade || (removeStrength && item instanceof PotionOfStrength)) items.remove();
             }
             if (heap.items.isEmpty()) level.heaps.remove(heap.pos);
         }
@@ -56,6 +60,7 @@ public final class ImpTravel {
                         // Shop bag selection consults inventory. Grant these only after the saved
                         // prefix is generated, still before the player sees or acts on floor 1.
                         new ScrollOfUpgrade().identify(false).quantity(15).collect();
+                        new PotionOfStrength().identify(false).quantity(10).collect();
                         return;
                     }
                 }

@@ -20,7 +20,7 @@ DEPS = {
 }
 
 parser = argparse.ArgumentParser()
-parser.add_argument('mode', choices=['reference', 'check', 'start', 'visits', 'no-free-badge', 'landing', 'suite', 'analyzer'])
+parser.add_argument('mode', choices=['reference', 'check', 'start', 'legacy-strength', 'visits', 'no-free-badge', 'landing', 'suite', 'analyzer'])
 parser.add_argument('--source-root', type=Path, default=ROOT)
 parser.add_argument('--fixtures', type=Path, default=ROOT / 'build/imp-regression/upstream.json')
 args = parser.parse_args()
@@ -55,7 +55,7 @@ if args.mode == 'analyzer':
                     '--check-artifact-guard'], check=True)
     subprocess.run([node, str(ROOT / 'tools/imp-travel/compare-analyzer.mjs'), '--classpath', runtime], check=True)
     raise SystemExit(0)
-modes = ['start', 'visits', 'no-free-badge', 'landing', 'check'] if args.mode == 'suite' else [args.mode]
+modes = ['start', 'legacy-strength', 'visits', 'no-free-badge', 'landing', 'check'] if args.mode == 'suite' else [args.mode]
 for mode in modes:
     subprocess.run(['java', '-Xmx1500m', '-cp', runtime, 'ImpTravelRegression',
                     mode, str(args.fixtures.resolve())], check=True)

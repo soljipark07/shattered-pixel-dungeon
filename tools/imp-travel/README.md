@@ -1,13 +1,17 @@
 # Solji Imp Travel 4.0.2
 
 Based exactly on official v4.0.2 (57a4e06a4caf162446d1c28caa7983f0493fecf0).
-Start a new game to receive an identified, reusable Imp travel beacon and 15 upgrade scrolls.
+Start a new game to receive an identified, reusable Imp travel beacon, 15 upgrade scrolls,
+and 10 identified strength potions. Existing games do not receive another starting grant
+and retain their original natural strength-potion generation. A persisted beacon flag
+distinguishes new relocation-enabled games from older saves.
 Its two actions visit the actual generated Imp room and return to floor 1. Complete the vault
 and use its normal escape crystal before using the beacon. Locked floors retain their normal restriction.
 
 The main floors from 1 through the Imp (17–19) are generated in original order at new-game start.
-All original upgrade spawn/placement RNG runs; only afterwards are natural upgrade scrolls
-removed. The gift is added after that prefix is prepared, so it cannot influence those shops.
+All original upgrade-scroll and strength-potion spawn/placement RNG runs; only afterwards are
+those items removed from generated heaps, including later floors. Drop counters remain intact.
+The gifts are added after that prefix is prepared, so they cannot influence those shops.
 The prefix is saved and loaded for travel, with destination occupancy rechecked on every use.
 
 ## Generation-time effects
@@ -36,7 +40,9 @@ map cells, loot types/levels/curses/quantities/positions, enemies, Imp rewards a
 state. It also checks starting inventory, actual saved-floor visits, no free exploration
 badge from pre-generation, occupied-destination handling, and travel-item serialization.
 
-The APK uses its own package, `com.solji.imptravel402.indev`, and does not replace official saves.
+The strength APK uses its own package, `com.solji.imptravel402.strength.indev`, and does not
+replace official saves or the earlier Imp APK. Its app label is `Solji Imp 힘물약 4.0.2`.
+It starts separate saves; this avoids requiring deletion of the earlier APK if debug signing differs.
 Android compilation does not substitute for device playtesting.
 
 ## Direct comparison with the user's current analyzer
@@ -52,7 +58,7 @@ combined challenges, and all six starting heroes. Compare all equipment and
 artifact types/upgrades/curses/effects/sources, quest rewards, all deterministic
 heap contents/quantities/locations, unidentified appearances, trinket choices,
 and every map the analyzer exposes through floor 24 plus the vault.
-Only naturally generated upgrade scrolls are removed from expected inventories.
+Only naturally generated upgrade scrolls and strength potions are removed from expected inventories.
 
 The analyzer explicitly labels runtime-random secret-room/vault consumables and
 shop bags as non-deterministic. Their predicted family/count/location is checked;

@@ -35,11 +35,12 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :android:assembleDebug
-          cp android/build/outputs/apk/debug/android-debug.apk solji-imp-travel-4.0.2.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify solji-imp-travel-4.0.2.apk
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging solji-imp-travel-4.0.2.apk | head -1
+          cp android/build/outputs/apk/debug/android-debug.apk solji-imp-travel-strength-4.0.2.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs solji-imp-travel-strength-4.0.2.apk
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging solji-imp-travel-strength-4.0.2.apk | head -1
+          sha256sum solji-imp-travel-strength-4.0.2.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: solji-imp-travel-4.0.2
-          path: solji-imp-travel-4.0.2.apk
+          name: solji-imp-travel-strength-4.0.2
+          path: solji-imp-travel-strength-4.0.2.apk
           if-no-files-found: error

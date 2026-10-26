@@ -5,7 +5,7 @@
   "scenarios": 26,
   "maps": 598,
   "equipment": 2423,
-  "knownHeapItems": 11220,
+  "knownHeapItems": 10960,
   "analyzerDeclaredUnknownItems": 389,
   "terrainDifferences": [
     {
@@ -62,6 +62,7 @@
   "trinket": "none",
   "trinketPlan": [],
   "naturalUpgradesRemoved": true,
+  "naturalStrengthPotionsRemoved": true,
   "results": [
     {
       "seed": "AAA-AAB-LKQ",
@@ -798,7 +799,5 @@
       ]
     }
   ],
-  "apkSha256": "229a2f60471e6425abad7c01d91f33c1f9883fab93ed31a261e17ac1e6953f70",
-  "gameplaySourceCommit": "9bf351bd92ade7c44f4c725108518239bd41aafd",
-  "gameplayChangedByThisVerification": false
+  "verificationScope": "Strength variant Java core; Android build/signature evidence recorded after CI. Physical-device playtesting not performed."
 }

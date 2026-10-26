@@ -89,7 +89,7 @@ for(let n=0;n<reference.cases.length;n++){
    terrainDifferences.push({seed:c.seed,mask:c.mask,depth:m.depth,branch:m.branch,cells,
     reason:'recorded map-only discrepancy: analyzer grass2 versus official/APK highgrass15 at cell1900; all item contents still checked exactly'});
   }
-  const heaps=m.heaps.map(h=>({...h,items:h.items.filter(i=>kind(i.kind)!=='scrollofupgrade')})).filter(h=>h.items.length);
+  const heaps=m.heaps.map(h=>({...h,items:h.items.filter(i=>!['scrollofupgrade','potionofstrength'].includes(kind(i.kind)))})).filter(h=>h.items.length);
   assert.deepEqual(sort(o.heaps.map(h=>[h.cell,canon(h.kind)])),sort(heaps.map(h=>[h.cell,canon(h.kind)])), 'heap cells/containers '+label);
   for(const h of heaps){
    const other=o.heaps.find(x=>x.cell===h.cell);assert.equal(other.items.length,h.items.length,'heap count '+label+' '+h.cell);
@@ -113,7 +113,7 @@ for(let n=0;n<reference.cases.length;n++){
 }
 const summary={analyzerFile:reference.analyzerFile,htmlSha256:reference.htmlSha256,engineSha256:reference.engineSha256,
  scenarios:results.length,maps:mapCount,equipment:gearCount,knownHeapItems:knownItems,analyzerDeclaredUnknownItems:unknownItems,terrainDifferences,
- trinket:'none',trinketPlan:[],naturalUpgradesRemoved:true,results};
+ trinket:'none',trinketPlan:[],naturalUpgradesRemoved:true,naturalStrengthPotionsRemoved:true,results};
 fs.writeFileSync(summaryPath,JSON.stringify(summary,null,2));
 console.log('PASS direct analyzer comparison: '+JSON.stringify({...summary,results:undefined}));
 

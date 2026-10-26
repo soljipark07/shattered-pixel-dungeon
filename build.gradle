@@ -11,12 +11,12 @@ buildscript {
 allprojects {
 
     ext {
-        appName = 'Solji Imp 4.0.2'
-        appPackageName = 'com.solji.imptravel402'
+        appName = 'Solji Imp 힘물약 4.0.2'
+        appPackageName = 'com.solji.imptravel402.strength'
 
         //Full releases gets +2 on version code, needed for an F-Droid quirk
-        appVersionCode = 922
-        appVersionName = '4.0.2'
+        appVersionCode = 923
+        appVersionName = '4.0.2-STR'
 
         appJavaCompatibility = JavaVersion.VERSION_11
 
