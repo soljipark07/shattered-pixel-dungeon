@@ -21,7 +21,10 @@ possible later playthrough's inventory-dependent generation.
 
 Shop bag selection is also inventory-dependent in the original game, with Java HashMap
 identity order breaking equal-saving ties. The engine comparison therefore normalizes bag
-subtypes, throwing-weapon SecureRandom set IDs, and actor runtime IDs. Tutorial/journal
+subtypes, throwing-weapon SecureRandom set IDs, and actor runtime IDs. The original secret
+laboratory and secret library also draw potion/scroll subtypes through Class-keyed HashMaps;
+their JVM-dependent iteration order is not fixed by the seed. Those two rooms' subtype
+choices are normalized while their counts, positions and item state remain checked. Tutorial/journal
 progress is equalized in both builds to avoid upstream unseeded guide-page placement.
 
 ## Verification

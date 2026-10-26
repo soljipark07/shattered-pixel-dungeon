@@ -6,4 +6,5 @@
 - Gift grant moved after preparation because the real ShopRoom bag choice inspects inventory; still occurs before the first player action.
 - Review findings fixed with RED to GREEN tests: real saved-floor visit progression, leaked transient no-killing flag, and occupied arrival revalidation. Preserve per-floor boss-remains qualification as well.
 - Final review: independent read-only reviewer inspected gameplay integration, save/load, quest inventory, resurrection, and package isolation. No other concrete functional issues. Android build and device UI behavior were not reviewed.
+- CI JDK 21 exposed original SecretLaboratoryRoom/SecretLibraryRoom Class-keyed HashMap ordering: subtype choices differed between JVMs while every other recorded cell/item matched. Compare their quantities/positions/state, not the original non-seed-defined subtypes; leave production generation unchanged. Initialization-order matching was insufficient and was removed.
 - Task 3 pending: final suite, GitHub branch and Android build/artifact.

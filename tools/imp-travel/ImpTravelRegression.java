@@ -10,6 +10,11 @@ import com.shatteredpixel.shatteredpixeldungeon.items.*;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
 import com.shatteredpixel.shatteredpixeldungeon.items.bags.Bag;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
+import com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLaboratoryRoom;
+import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLibraryRoom;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
+import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
 import com.watabou.noosa.Game;
 import com.watabou.utils.Bundle;
@@ -35,10 +40,6 @@ public class ImpTravelRegression {
             Game.version = "4.0.2";
             Game.versionCode = 922;
             GamesInProgress.curSlot = 1;
-            // These upstream tables are keyed by Class identity hashes. Initialize them
-            // in identical harness context before either run allocates its start items.
-            Class.forName("com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLaboratoryRoom");
-            Class.forName("com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLibraryRoom");
             // Tutorial placement deliberately uses an unseeded RNG in upstream.
             // Use the same completed journal in both builds to compare seeded content.
             SPDSettings.intro(false);
@@ -219,11 +220,21 @@ public class ImpTravelRegression {
     private static JSONObject snapshot(Level level) throws Exception {
         ArrayList<String> loot=new ArrayList<>(), mobs=new ArrayList<>(), rewards=new ArrayList<>();
         for(Heap heap:level.heaps.valueList()) {
-            for(Item item:heap.items) if(!(item instanceof ScrollOfUpgrade))
+            for(Item item:heap.items) if(!(item instanceof ScrollOfUpgrade)) {
                 // Upstream ShopRoom chooses bags by inventory savings, with HashMap identity
                 // order breaking ties. Bag subtype is not seed-defined even in the original.
-                loot.add(heap.pos+":"+heap.type+":"+(item instanceof Bag ? "INVENTORY_DEPENDENT_BAG"
-                        : item.getClass().getName())+":"+itemData(item));
+                String kind=item instanceof Bag ? "INVENTORY_DEPENDENT_BAG" : item.getClass().getName();
+                if(level instanceof RegularLevel) {
+                    Object room=((RegularLevel)level).room(heap.pos);
+                    // These two original room tables use Class-keyed HashMaps, whose identity
+                    // iteration order is JVM-dependent. Still compare counts, cells, and item state.
+                    if(room instanceof SecretLaboratoryRoom && item instanceof Potion)
+                        kind="UPSTREAM_CLASS_IDENTITY_POTION";
+                    if(room instanceof SecretLibraryRoom && item instanceof Scroll)
+                        kind="UPSTREAM_CLASS_IDENTITY_SCROLL";
+                }
+                loot.add(heap.pos+":"+heap.type+":"+kind+":"+itemData(item));
+            }
         }
         for(Mob mob:level.mobs) {
             Bundle data=new Bundle(); mob.storeInBundle(data);
