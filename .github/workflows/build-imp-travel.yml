@@ -1,0 +1,41 @@
+name: Build Imp Travel 4.0.2
+on:
+  push:
+    branches: [feat/imp-travel-402]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: android-actions/setup-android@v4
+      - name: Install Android platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Compare against official v4.0.2 engine
+        run: |
+          mkdir -p build/imp-regression/upstream-source
+          git archive 57a4e06a4caf162446d1c28caa7983f0493fecf0 | tar -x -C build/imp-regression/upstream-source
+          python3 tools/imp-travel/verify.py reference --source-root build/imp-regression/upstream-source
+          python3 tools/imp-travel/verify.py suite
+      - name: Build Android APK
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :android:assembleDebug
+          cp android/build/outputs/apk/debug/android-debug.apk solji-imp-travel-4.0.2.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solji-imp-travel-4.0.2
+          path: solji-imp-travel-4.0.2.apk
+          if-no-files-found: error

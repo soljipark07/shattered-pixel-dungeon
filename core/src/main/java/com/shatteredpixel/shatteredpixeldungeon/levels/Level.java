@@ -322,6 +322,7 @@ public abstract class Level implements Bundlable {
 		createItems();
 
 		Random.popGenerator();
+		com.shatteredpixel.shatteredpixeldungeon.ImpTravel.removeNaturalUpgrades(this);
 	}
 	
 	public void setSize(int w, int h){

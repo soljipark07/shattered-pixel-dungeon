@@ -284,6 +284,7 @@ public class Dungeon {
 		Badges.reset();
 		
 		GamesInProgress.selectedClass.initHero( hero );
+		ImpTravel.grantStartingItems();
 	}
 
 	public static boolean isChallenged( int mask ) {
@@ -479,6 +480,7 @@ public class Dungeon {
 		
 		Dungeon.level = level;
 		hero.pos = pos;
+		ImpTravel.onVisit();
 
 		if (hero.buff(AscensionChallenge.class) != null){
 			hero.buff(AscensionChallenge.class).onLevelSwitch();

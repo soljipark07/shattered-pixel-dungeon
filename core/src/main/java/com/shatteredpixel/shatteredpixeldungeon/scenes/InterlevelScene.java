@@ -645,6 +645,8 @@ public class InterlevelScene extends PixelScene {
 			}
 
 			Level level = Dungeon.newLevel();
+			Dungeon.level = level;
+			com.shatteredpixel.shatteredpixeldungeon.ImpTravel.prepare(level);
 			Dungeon.switchLevel( level, -1 );
 		} else {
 			if (curTransition.destBranch != Dungeon.branch && Dungeon.depth >= 16 && Dungeon.depth <= 20) {
@@ -727,7 +729,7 @@ public class InterlevelScene extends PixelScene {
 			level = Dungeon.newLevel();
 		}
 
-		Dungeon.switchLevel( level, returnPos );
+		Dungeon.switchLevel( level, com.shatteredpixel.shatteredpixeldungeon.ImpTravel.resolveArrival(level, returnPos) );
 	}
 	
 	private void restore() throws IOException {
