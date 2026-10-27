@@ -45,4 +45,4 @@
 - [x] Extend cleanup and delayed grant; update messages/docs and bump custom version code.
 - [x] Run the full official-engine suite and all 26 existing direct analyzer scenarios, excluding only relocated upgrade scrolls and strength potions.
 - [x] Request one read-only code review and resolve important findings.
-- [ ] Build Android APK through the feature branch workflow, inspect successful checks/signature/package, and deliver the actual APK.
+- [x] Build Android APK through the feature branch workflow, inspect successful checks/signature/package, and deliver the actual APK.

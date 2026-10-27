@@ -799,5 +799,18 @@
       ]
     }
   ],
-  "verificationScope": "Strength variant Java core; Android build/signature evidence recorded after CI. Physical-device playtesting not performed."
+  "verificationScope": "Strength variant Java core; CI independently passed the official suite, direct analyzer comparison, Android build and signature verification. Physical-device playtesting not performed.",
+  "apk": {
+    "sourceCommit": "83cbae57deef8c581620abbf2a61e9dc63da0504",
+    "workflowRun": "https://github.com/soljipark07/shattered-pixel-dungeon/actions/runs/40347582224",
+    "artifactId": 12662451779,
+    "filename": "solji-imp-travel-strength-4.0.2.apk",
+    "bytes": 35136874,
+    "sha256": "0f355b8831f90fd6b1148331039934889adba7d4d350695272076e03170cc716",
+    "signerSha256": "48da543fc51bba297d170600665410109e3f2672e80c6208e8413eb97253cae5",
+    "applicationId": "com.solji.imptravel402.strength.indev",
+    "versionCode": 923,
+    "versionName": "4.0.2-STR-INDEV",
+    "physicalDeviceTested": false
+  }
 }
