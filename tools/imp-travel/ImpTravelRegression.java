@@ -15,6 +15,7 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLabora
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretLibraryRoom;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.Potion;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfExperience;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
 import com.watabou.noosa.Game;
@@ -63,16 +64,21 @@ public class ImpTravelRegression {
                 init(0, 0);
                 Level first=Dungeon.newLevel();Dungeon.level=first;
                 require(countStrength()==0, "strength grant must wait until prefix generation finishes");
+                require(countExperience()==0, "experience grant must wait until prefix generation finishes");
                 Class.forName("com.shatteredpixel.shatteredpixeldungeon.ImpTravel")
                         .getMethod("prepare", Level.class).invoke(null, first);
                 int count = countUpgrades();
                 require(count == 15, "new game must carry 15 upgrade scrolls; got "+count);
                 require(countStrength()==10, "new game must carry 10 strength potions; got "+countStrength());
+                require(countExperience()==10, "new game must carry 10 experience potions; got "+countExperience());
                 for(Item item:Dungeon.hero.belongings.backpack.items)
                     if(item instanceof PotionOfStrength) require(item.isIdentified(), "starting strength must be identified");
+                for(Item item:Dungeon.hero.belongings.backpack.items)
+                    if(item instanceof PotionOfExperience) require(item.isIdentified(), "starting experience must be identified");
                 Dungeon.saveGame(1);
                 Dungeon.loadGame(1);
                 require(countStrength()==10 && countUpgrades()==15, "starting grants must survive save/reload without duplication");
+                require(countExperience()==10, "experience grant must survive save/reload without duplication");
                 int last=Collections.max(Dungeon.generatedLevels);
                 for(int depth=last+1;depth<=24;depth++) {
                     Dungeon.depth=depth;
@@ -80,6 +86,26 @@ public class ImpTravelRegression {
                     requireNoNaturalStartingItems(Dungeon.level);
                 }
                 System.out.println("PASS starting inventory");
+                return;
+            }
+            if (args[0].equals("experience-cleanup")) {
+                init(0,0);
+                Level level=Dungeon.newLevel();Dungeon.level=level;
+                int[] terrain=level.map.clone();level.heaps.clear();
+                Heap mixed=new Heap();mixed.pos=level.entrance();
+                Item healing=new com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfHealing();
+                Item exotic=new com.shatteredpixel.shatteredpixeldungeon.items.potions.exotic.PotionOfDivineInspiration();
+                mixed.items.add(new PotionOfExperience().quantity(3));
+                mixed.items.add(healing);mixed.items.add(exotic);
+                Heap only=new Heap();only.pos=mixed.pos+1;only.items.add(new PotionOfExperience());
+                level.heaps.put(mixed.pos,mixed);level.heaps.put(only.pos,only);
+                Class.forName("com.shatteredpixel.shatteredpixeldungeon.ImpTravel")
+                        .getMethod("removeNaturalStartingItems",Level.class).invoke(null,level);
+                require(mixed.items.size()==2 && mixed.items.contains(healing) && mixed.items.contains(exotic),
+                        "XP cleanup must remove only regular XP and retain other/exotic potions");
+                require(level.heaps.get(only.pos)==null, "XP-only heap must be removed");
+                require(Arrays.equals(terrain,level.map), "XP cleanup must not alter terrain");
+                System.out.println("PASS XP-only cleanup preserves mixed heaps, exotic potions and terrain");
                 return;
             }
             if (args[0].equals("legacy-strength")) {
@@ -91,17 +117,40 @@ public class ImpTravelRegression {
                 Bundle legacy=new Bundle();
                 beacon.storeInBundle(legacy);
                 legacy.remove("strength_relocated");
+                legacy.remove("experience_relocated");
                 // Older APKs stored no strength-relocation flag.
                 beacon.restoreFromBundle(legacy);
                 int natural=0;
+                int naturalExperience=0;
                 for(int depth=1;depth<=24;depth++) {
                     Dungeon.depth=depth;
                     Dungeon.level=Dungeon.newLevel();
-                    for(Heap heap:Dungeon.level.heaps.valueList()) for(Item item:heap.items)
+                    for(Heap heap:Dungeon.level.heaps.valueList()) for(Item item:heap.items) {
                         if(item instanceof PotionOfStrength) natural+=item.quantity();
+                        if(item instanceof PotionOfExperience) naturalExperience+=item.quantity();
+                    }
                 }
                 require(natural==10, "legacy saves must retain ten natural strength potions; got "+natural);
                 require(countStrength()==0, "legacy saves must not receive another starting grant");
+                require(naturalExperience>0 && countExperience()==0, "legacy saves retain natural XP without another grant");
+                // Immediately previous APK: strength relocation was saved, XP mode did not exist.
+                init(0,0);
+                for(Item item:Dungeon.hero.belongings.backpack.items) {
+                    if(!item.getClass().getSimpleName().equals("ImpBeacon")) continue;
+                    Bundle previous=new Bundle();item.storeInBundle(previous);
+                    previous.put("strength_relocated",true);previous.remove("experience_relocated");
+                    item.restoreFromBundle(previous);
+                }
+                int previousStrength=0,previousExperience=0;
+                for(int depth=1;depth<=24;depth++) {
+                    Dungeon.depth=depth;Dungeon.level=Dungeon.newLevel();
+                    for(Heap heap:Dungeon.level.heaps.valueList()) for(Item item:heap.items) {
+                        if(item instanceof PotionOfStrength) previousStrength+=item.quantity();
+                        if(item instanceof PotionOfExperience) previousExperience+=item.quantity();
+                    }
+                }
+                require(previousStrength==0 && previousExperience>0 && countExperience()==0,
+                        "previous strength APK save must preserve independent relocation modes");
                 System.out.println("PASS legacy saves retain natural strength potions");
                 return;
             }
@@ -179,12 +228,28 @@ public class ImpTravelRegression {
                         }
                         fixtures.put(run, levels);
                     } else {
+                        // Keep runtime-identity potion draws in one JVM: first prove a control
+                        // against official fixtures, then require an XP-only delta from it.
+                        setExperienceRelocation(false);
+                        JSONObject variantExpected=new JSONObject();
+                        for(int depth=1;depth<=26;depth++) {
+                            Dungeon.depth=depth;
+                            Dungeon.level=Dungeon.newLevel();
+                            JSONObject control=snapshot(Dungeon.level);
+                            JSONObject official=fixtures.getJSONObject(run).getJSONObject(""+depth);
+                            for(String key:new String[]{"map","loot","mobs","rewards","generator"})
+                                require(official.getString(key).equals(control.getString(key)),
+                                        run+" control floor "+depth+" "+key+" differs from upstream");
+                            variantExpected.put(""+depth,snapshot(Dungeon.level,true));
+                        }
+                        init(seed,challenge);
                         Level first = Dungeon.newLevel();
                         Dungeon.level = first;
                         Class.forName("com.shatteredpixel.shatteredpixeldungeon.ImpTravel")
                                 .getMethod("prepare", Level.class).invoke(null, first);
                         require(countUpgrades()==15, "15 starting upgrades for "+run);
                         require(countStrength()==10, "10 starting strength potions for "+run);
+                        require(countExperience()==10, "10 starting experience potions for "+run);
                         require(Dungeon.depth==1 && Dungeon.branch==0 && Dungeon.level==first,
                                 "preparation must restore floor 1");
                         require(Statistics.deepestFloor==1, "generation must not count as visiting floors");
@@ -195,7 +260,7 @@ public class ImpTravelRegression {
                         for (int depth=1; depth<=last; depth++) {
                             Dungeon.depth=depth;
                             Level level = Dungeon.loadLevel(1);
-                            JSONObject want=fixtures.getJSONObject(run).getJSONObject(""+depth);
+                            JSONObject want=variantExpected.getJSONObject(""+depth);
                             JSONObject got=snapshot(level);
                             for (String key : new String[]{"map","loot","mobs"}) {
                                 require(want.getString(key).equals(got.getString(key)),
@@ -220,7 +285,7 @@ public class ImpTravelRegression {
                             Dungeon.depth=depth;
                             Dungeon.level=Dungeon.newLevel();
                             requireNoNaturalStartingItems(Dungeon.level);
-                            JSONObject want=fixtures.getJSONObject(run).getJSONObject(""+depth);
+                            JSONObject want=variantExpected.getJSONObject(""+depth);
                             JSONObject got=snapshot(Dungeon.level);
                             require(want.getInt("strengthDrops")==Dungeon.LimitedDrops.STRENGTH_POTIONS.count,
                                     run+" later floor "+depth+" strength-drop counter differs");
@@ -261,10 +326,28 @@ public class ImpTravelRegression {
         return result;
     }
 
+    private static int countExperience() {
+        int result=0;
+        for(Item item:Dungeon.hero.belongings.backpack.items)
+            if(item instanceof PotionOfExperience) result+=item.quantity();
+        return result;
+    }
+
+    private static void setExperienceRelocation(boolean enabled) {
+        for(Item item:Dungeon.hero.belongings.backpack.items) {
+            if(!item.getClass().getSimpleName().equals("ImpBeacon")) continue;
+            Bundle stored=new Bundle();item.storeInBundle(stored);
+            stored.put("experience_relocated",enabled);item.restoreFromBundle(stored);
+            return;
+        }
+        throw new AssertionError("beacon missing");
+    }
+
     private static void requireNoNaturalStartingItems(Level level) {
         for(Heap heap:level.heaps.valueList()) for(Item item:heap.items) {
             require(!(item instanceof ScrollOfUpgrade), "natural upgrade remains");
             require(!(item instanceof PotionOfStrength), "natural strength potion remains");
+            require(!(item instanceof PotionOfExperience), "natural experience potion remains");
         }
     }
 
@@ -276,9 +359,14 @@ public class ImpTravelRegression {
     }
 
     private static JSONObject snapshot(Level level) throws Exception {
+        return snapshot(level,false);
+    }
+
+    private static JSONObject snapshot(Level level,boolean excludeExperience) throws Exception {
         ArrayList<String> loot=new ArrayList<>(), mobs=new ArrayList<>(), rewards=new ArrayList<>();
         for(Heap heap:level.heaps.valueList()) {
-            for(Item item:heap.items) if(!(item instanceof ScrollOfUpgrade) && !(item instanceof PotionOfStrength)) {
+            for(Item item:heap.items) if(!(item instanceof ScrollOfUpgrade) && !(item instanceof PotionOfStrength)
+                    && !(excludeExperience && item instanceof PotionOfExperience)) {
                 // Upstream ShopRoom chooses bags by inventory savings, with HashMap identity
                 // order breaking ties. Bag subtype is not seed-defined even in the original.
                 String kind=item instanceof Bag ? "INVENTORY_DEPENDENT_BAG" : item.getClass().getName();

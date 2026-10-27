@@ -9,6 +9,10 @@ const aliases={Gauntlet:'StoneGauntlet',Ration:'Food',ArcaneStylus:'Stylus',Exot
 let catalog;
 const kind=s=>canon(aliases[s]||aliases[simple(s)]||catalog.items[s]?.nameEn||simple(s));
 const mobKind=s=>/VaultElemental\$(Fire|Frost|Shock)$/.test(s)?canon(s.split('$').at(-1)+'Elemental'):canon(simple(s).replace(/^Vault/,''));
+const equipment=records=>records.filter(r=>r.record==='item'&&r.searchable&&r.simple_class!=='Dart'&&!(r.source==='vault_heap'&&r.room==='VaultFinalRoom'))
+ .map(r=>[r.depth,kind(r.simple_class),r.search_upgrade,r.cursed,effect(r.glyph||r.enchantment),source(r)]);
+const comparableHeaps=heaps=>sort(heaps.map(h=>({...h,items:h.items.map(i=>/\.bags\./.test(i.kind)
+ ?{...i,kind:'INVENTORY_DEPENDENT_BAG',image:'INVENTORY_DEPENDENT_BAG'}:i)})));
 const getArg=(name,fallback)=>{const i=process.argv.indexOf(name);return i<0?fallback:process.argv[i+1];};
 const fixturePath=getArg('--fixtures',new URL('./analyzer-reference.json.gz',import.meta.url).pathname);
 const htmlPath=getArg('--generate-html',null);
@@ -52,22 +56,39 @@ if(htmlPath){
  fs.writeFileSync(fixturePath,gzipSync(JSON.stringify(reference),{level:9}));
 }else reference=JSON.parse(gunzipSync(fs.readFileSync(fixturePath)));
 catalog=reference.catalog;
-let mapCount=0,knownItems=0,unknownItems=0,gearCount=0;
+let mapCount=0,knownItems=0,unknownItems=0,gearCount=0,experiencePotionsRemoved=0;
 const terrainDifferences=[];
 const results=[];
 for(let n=0;n<reference.cases.length;n++){
  const c=reference.cases[n],tag=c.seed+' mask='+c.mask+' '+c.hero;
- const args=['-Xmx1500m','-Dimp.heroClass='+c.hero,'-cp',classpath,'com.shatteredpixel.shatteredpixeldungeon.AnalyzerExportLauncher',
+ const args=['-Xmx1500m','--add-opens=java.base/java.util=ALL-UNNAMED','-Dimp.heroClass='+c.hero,'-Dimp.experienceControlPair=true','-cp',classpath,'com.shatteredpixel.shatteredpixeldungeon.AnalyzerExportLauncher',
   '--seed',c.seed,'--challenges',String(c.mask),'--floors','1-24','--vault','--map-contents','--format','json'];
  const output=execFileSync('java',args,{maxBuffer:24*1024*1024});
  fs.writeFileSync(path.join(cache,n+'.json'),output);
- const records=JSON.parse(output).records;
- const actual=records.filter(r=>r.record==='item'&&r.searchable&&r.simple_class!=='Dart'&&!(r.source==='vault_heap'&&r.room==='VaultFinalRoom'))
-  .map(r=>[r.depth,kind(r.simple_class),r.search_upgrade,r.cursed,effect(r.glyph||r.enchantment),source(r)]);
+ const pair=JSON.parse(output);
+ assert.ok(pair.control?.records&&pair.variant?.records,'same-JVM control/variant pair '+tag);
+ const records=pair.control.records,variantRecords=pair.variant.records;
+ const actual=equipment(records);
+ assert.deepEqual(sort(equipment(variantRecords)),sort(actual),'XP relocation preserves all equipment/rewards '+tag);
+ assert.deepEqual(variantRecords.find(r=>r.record==='trinket_choices').choices,
+  records.find(r=>r.record==='trinket_choices').choices,'XP relocation preserves the trinket deck '+tag);
+ for(const control of records.filter(r=>r.record==='level')){
+  const variant=variantRecords.find(r=>r.record==='level'&&r.depth===control.depth&&r.branch===control.branch);
+  assert.ok(variant,'XP variant level exists '+tag+' '+control.depth+'/'+control.branch);
+  for(const key of ['width','height','entrance','exit','feeling','map','mobs','plants','effects','traps','generator_state_hash','limited_drops','room_queues'])
+   assert.deepEqual(variant[key],control[key],'XP relocation preserves '+key+' '+tag+' '+control.depth+'/'+control.branch);
+  const remaining=control.heaps.map(h=>({...h,items:h.items.filter(i=>kind(i.kind)!=='potionofexperience')})).filter(h=>h.items.length);
+  assert.deepEqual(comparableHeaps(variant.heaps),comparableHeaps(remaining),'only regular heap XP may disappear '+tag+' '+control.depth+'/'+control.branch);
+  experiencePotionsRemoved+=control.heaps.flatMap(h=>h.items).filter(i=>kind(i.kind)==='potionofexperience').reduce((sum,i)=>sum+i.quantity,0);
+ }
  const expected=c.report.items.filter(i=>i.category!=='trinket'&&i.id!=='dart')
   .map(i=>[i.depth,kind(i.name),i.upgrade,i.cursed,effect(i.effect?.name),i.source]);
  assert.deepEqual(sort(actual),sort(expected),'all equipment, artifacts and quest rewards '+tag);gearCount+=actual.length;
  const identification=records.find(r=>r.record==='run_init').identification;
+ const variantIdentification=variantRecords.find(r=>r.record==='run_init').identification;
+ for(const family of ['potions','scrolls','rings'])assert.deepEqual(
+  sort(variantIdentification[family].map(i=>[kind(i.class),canon(i.label)])),
+  sort(identification[family].map(i=>[kind(i.class),canon(i.label)])), 'XP relocation preserves appearances '+family+' '+tag);
  const trinkets=records.find(r=>r.record==='trinket_choices');
  assert.ok(trinkets,'actual trinket deck exported '+tag);
  assert.deepEqual(trinkets.choices.map(kind),c.report.trinketOrder.map(i=>kind(i.name)), 'trinket choices '+tag);
@@ -96,7 +117,7 @@ for(let n=0;n<reference.cases.length;n++){
    const pool=other.items.map(i=>({...i,canonical:kind(i.kind)}));
    for(const i of h.items.filter(i=>i.deterministic===true)){
     const ix=pool.findIndex(x=>x.canonical===kind(i.kind)&&x.quantity===i.quantity);
-    assert.ok(ix>=0,'exact item '+label+' '+h.cell+' '+i.kind+' vs '+JSON.stringify(pool));pool.splice(ix,1);knownItems++;
+    assert.ok(ix>=0,'exact item '+label+' '+h.cell+' '+i.kind+' vs '+JSON.stringify(pool));pool.splice(ix,1);if(kind(i.kind)!=='potionofexperience')knownItems++;
    }
    for(const i of h.items.filter(i=>i.deterministic!==true)){
     const ix=pool.findIndex(x=>x.quantity===i.quantity&&allowedUnknown(i.kind,x.kind));
@@ -113,7 +134,9 @@ for(let n=0;n<reference.cases.length;n++){
 }
 const summary={analyzerFile:reference.analyzerFile,htmlSha256:reference.htmlSha256,engineSha256:reference.engineSha256,
  scenarios:results.length,maps:mapCount,equipment:gearCount,knownHeapItems:knownItems,analyzerDeclaredUnknownItems:unknownItems,terrainDifferences,
- trinket:'none',trinketPlan:[],naturalUpgradesRemoved:true,naturalStrengthPotionsRemoved:true,results};
+ trinket:'none',trinketPlan:[],naturalUpgradesRemoved:true,naturalStrengthPotionsRemoved:true,
+ naturalExperiencePotionsRemoved:true,startingExperiencePotions:10,experiencePotionsRemoved,
+ comparisonStrategy:'Control retains XP and matches analyzer uncertainty rules; paired audit fixes vanilla unseeded Collections.shuffle and resets vault solve arrays, normalizes existing runtime shop-bag ties, and requires exactly control heaps minus regular XP with unchanged terrain/mobs/decks/equipment/rewards.',results};
 fs.writeFileSync(summaryPath,JSON.stringify(summary,null,2));
 console.log('PASS direct analyzer comparison: '+JSON.stringify({...summary,results:undefined}));
 

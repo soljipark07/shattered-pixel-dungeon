@@ -2,14 +2,15 @@
 
 Based exactly on official v4.0.2 (57a4e06a4caf162446d1c28caa7983f0493fecf0).
 Start a new game to receive an identified, reusable Imp travel beacon, 15 upgrade scrolls,
-and 10 identified strength potions. Existing games do not receive another starting grant
-and retain their original natural strength-potion generation. A persisted beacon flag
-distinguishes new relocation-enabled games from older saves.
+10 identified strength potions and 10 identified experience potions. Experience potions
+have no fixed natural total; ten is the chosen starting allowance. Existing games do not
+receive another starting grant and retain their saved relocation modes. Separate persisted
+strength/experience flags default false when missing from an older beacon.
 Its two actions visit the actual generated Imp room and return to floor 1. Complete the vault
 and use its normal escape crystal before using the beacon. Locked floors retain their normal restriction.
 
 The main floors from 1 through the Imp (17–19) are generated in original order at new-game start.
-All original upgrade-scroll and strength-potion spawn/placement RNG runs; only afterwards are
+All original upgrade-scroll, strength-potion and experience-potion spawn/placement RNG runs; only afterwards are
 those items removed from generated heaps, including later floors. Drop counters remain intact.
 The gifts are added after that prefix is prepared, so they cannot influence those shops.
 The prefix is saved and loaded for travel, with destination occupancy rechecked on every use.
@@ -40,8 +41,8 @@ map cells, loot types/levels/curses/quantities/positions, enemies, Imp rewards a
 state. It also checks starting inventory, actual saved-floor visits, no free exploration
 badge from pre-generation, occupied-destination handling, and travel-item serialization.
 
-The strength APK uses its own package, `com.solji.imptravel402.strength.indev`, and does not
-replace official saves or the earlier Imp APK. Its app label is `Solji Imp 힘물약 4.0.2`.
+The experience APK uses its own package, `com.solji.imptravel402.experience.indev`, and does not
+replace official saves or the earlier Imp/strength APKs. Its app label is `Solji Imp 경험물약 4.0.2`.
 It starts separate saves; this avoids requiring deletion of the earlier APK if debug signing differs.
 Android compilation does not substitute for device playtesting.
 
@@ -58,7 +59,12 @@ combined challenges, and all six starting heroes. Compare all equipment and
 artifact types/upgrades/curses/effects/sources, quest rewards, all deterministic
 heap contents/quantities/locations, unidentified appearances, trinket choices,
 and every map the analyzer exposes through floor 24 plus the vault.
-Only naturally generated upgrade scrolls and strength potions are removed from expected inventories.
+Upgrade scrolls and strength potions are removed from expected inventories. A control run
+retains natural experience potions and is checked against the analyzer unchanged; the
+relocation-enabled run must exactly match that same-JVM control after removing only regular
+heap XP. This also checks runtime-dependent laboratory and vault consumables without
+allowing other missing items. Enemy drops, alchemy and other later runtime sources remain
+normal. The saved-prefix extent stays at the Imp.
 
 The analyzer explicitly labels runtime-random secret-room/vault consumables and
 shop bags as non-deterministic. Their predicted family/count/location is checked;

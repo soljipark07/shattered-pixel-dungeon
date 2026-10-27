@@ -141,6 +141,14 @@ public final class AnalyzerOracle {
 		Dungeon.initSeed();
 		GamesInProgress.selectedClass = HeroClass.valueOf(System.getProperty("imp.heroClass", "WARRIOR"));
 		Dungeon.init();
+        if (Boolean.getBoolean("imp.disableExperience")) {
+            com.shatteredpixel.shatteredpixeldungeon.items.ImpBeacon beacon =
+                    Dungeon.hero.belongings.getItem(com.shatteredpixel.shatteredpixeldungeon.items.ImpBeacon.class);
+            com.watabou.utils.Bundle stored = new com.watabou.utils.Bundle();
+            beacon.storeInBundle(stored);
+            stored.put("experience_relocated",false);
+            beacon.restoreFromBundle(stored);
+        }
         GamesInProgress.curSlot = 1;
         Level first = Dungeon.newLevel();
         Dungeon.level = first;

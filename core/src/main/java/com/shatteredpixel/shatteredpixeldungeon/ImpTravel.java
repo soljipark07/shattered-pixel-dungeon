@@ -6,6 +6,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.Heap;
 import com.shatteredpixel.shatteredpixeldungeon.items.ImpBeacon;
 import com.shatteredpixel.shatteredpixeldungeon.items.Item;
 import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfStrength;
+import com.shatteredpixel.shatteredpixeldungeon.items.potions.PotionOfExperience;
 import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.ScrollOfUpgrade;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.watabou.utils.Bundle;
@@ -27,11 +28,14 @@ public final class ImpTravel {
     public static void removeNaturalStartingItems(Level level) {
         ImpBeacon beacon = Dungeon.hero == null ? null : Dungeon.hero.belongings.getItem(ImpBeacon.class);
         boolean removeStrength = beacon != null && beacon.relocatesStrength();
+        boolean removeExperience = beacon != null && beacon.relocatesExperience();
         for (Heap heap : level.heaps.valueList()) {
             Iterator<Item> items = heap.items.iterator();
             while (items.hasNext()) {
                 Item item = items.next();
-                if (item instanceof ScrollOfUpgrade || (removeStrength && item instanceof PotionOfStrength)) items.remove();
+                if (item instanceof ScrollOfUpgrade
+                        || (removeStrength && item instanceof PotionOfStrength)
+                        || (removeExperience && item instanceof PotionOfExperience)) items.remove();
             }
             if (heap.items.isEmpty()) level.heaps.remove(heap.pos);
         }
@@ -61,6 +65,9 @@ public final class ImpTravel {
                         // prefix is generated, still before the player sees or acts on floor 1.
                         new ScrollOfUpgrade().identify(false).quantity(15).collect();
                         new PotionOfStrength().identify(false).quantity(10).collect();
+                        if (beacon.relocatesExperience()) {
+                            new PotionOfExperience().identify(false).quantity(10).collect();
+                        }
                         return;
                     }
                 }

@@ -38,9 +38,49 @@ public final class AnalyzerExportLauncher {
                 System.out.println("PASS artifact comparison rejects missing transfer upgrades");
                 return;
             }
-            AnalyzerOracle.main(args);
+            if (Boolean.getBoolean("imp.experienceControlPair")) {
+                java.util.Map<java.lang.reflect.Field,Object[]> vaultArrays=new java.util.LinkedHashMap<>();
+                for(String name:new String[]{"T2SolveItems","T3SolveItems"}) {
+                    java.lang.reflect.Field field=com.shatteredpixel.shatteredpixeldungeon.levels.VaultLevel.class.getDeclaredField(name);
+                    field.setAccessible(true);
+                    vaultArrays.put(field,((Object[])field.get(null)).clone());
+                }
+                java.io.PrintStream original=System.out;
+                java.io.ByteArrayOutputStream control=new java.io.ByteArrayOutputStream();
+                java.io.ByteArrayOutputStream variant=new java.io.ByteArrayOutputStream();
+                try {
+                    resetUnseededOracleState(vaultArrays);
+                    System.setProperty("imp.disableExperience","true");
+                    System.setOut(new java.io.PrintStream(control,true,"UTF-8"));
+                    AnalyzerOracle.main(args);
+                    resetUnseededOracleState(vaultArrays);
+                    System.clearProperty("imp.disableExperience");
+                    System.setOut(new java.io.PrintStream(variant,true,"UTF-8"));
+                    AnalyzerOracle.main(args);
+                } finally {
+                    System.setOut(original);
+                    System.clearProperty("imp.disableExperience");
+                }
+                original.println(new org.json.JSONObject()
+                        .put("control",new org.json.JSONObject(control.toString("UTF-8")))
+                        .put("variant",new org.json.JSONObject(variant.toString("UTF-8"))));
+            } else {
+                AnalyzerOracle.main(args);
+            }
         } finally {
             app.exit();
+        }
+    }
+
+    private static void resetUnseededOracleState(java.util.Map<java.lang.reflect.Field,Object[]> vaultArrays) throws Exception {
+        // Vanilla Collections.shuffle uses its own unseeded JDK RNG. Hold that nuisance
+        // choice fixed for the paired audit; no Android/production RNG is changed.
+        java.lang.reflect.Field shuffle=java.util.Collections.class.getDeclaredField("r");
+        shuffle.setAccessible(true);
+        shuffle.set(null,new java.util.Random(0));
+        for(java.util.Map.Entry<java.lang.reflect.Field,Object[]> entry:vaultArrays.entrySet()) {
+            Object[] target=(Object[])entry.getKey().get(null);
+            System.arraycopy(entry.getValue(),0,target,0,target.length);
         }
     }
 }
