@@ -1,6 +1,6 @@
 # Starting Experience Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Start new games with ten identified experience potions and remove natural heap XP potions without changing the other seeded contents.
 
@@ -35,5 +35,5 @@
 - [x] Add starting-ten, save/reload, legacy-save and heap-cleanup regressions; observe missing grant fail.
 - [x] Implement guarded cleanup and delayed identified grant; update version, descriptions and artifact name.
 - [x] Validate 624 official-reference floors using controls and variants; compare all26 analyzer scenarios with exact same-JVM XP-only deltas.
-- [ ] Obtain read-only review and resolve important findings with RED/GREEN checks.
-- [ ] Build/sign/inspect APK in CI, retain source/evidence, save and deliver the actual file.
+- [x] Obtain read-only review and resolve important findings with RED/GREEN checks.
+- [x] Build/sign/inspect APK in CI, retain source/evidence, save and deliver the actual file.
