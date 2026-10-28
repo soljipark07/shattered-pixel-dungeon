@@ -64,758 +64,205 @@
   "naturalUpgradesRemoved": true,
   "naturalStrengthPotionsRemoved": true,
   "naturalExperiencePotionsRemoved": true,
-  "startingExperiencePotions": 10,
+  "startingExperiencePotions": 30,
   "experiencePotionsRemoved": 104,
   "comparisonStrategy": "Control retains XP and matches analyzer uncertainty rules; paired audit fixes vanilla unseeded Collections.shuffle and resets vault solve arrays, normalizes existing runtime shop-bag ties, and requires exactly control heaps minus regular XP with unchanged terrain/mobs/decks/equipment/rewards.",
-  "verificationScope": "CI Java21 headless controls/variants, independent official/analyzer checks, Android build and signature verification. Physical-device execution not tested.",
-  "apk": {
-    "sourceCommit": "2984e4a02e9fdfa8e3fe25d320b1543a0dcb2f4a",
-    "workflowRun": "https://github.com/soljipark07/shattered-pixel-dungeon/actions/runs/40552383017",
-    "artifactId": 12756091314,
-    "filename": "solji-imp-travel-experience-4.0.2.apk",
-    "bytes": 35137239,
-    "sha256": "c578fb38ed6cf03c89e86602298bdcd341f49e83c5c0db48240961678baf8044",
-    "signerSha256": "83358572488901487d7c450da6057334ccc58ecbdfd5d241f60b593763af8cd0",
-    "applicationId": "com.solji.imptravel402.experience.indev",
-    "versionCode": 924,
-    "versionName": "4.0.2-EXP-INDEV",
-    "physicalDeviceTested": false
-  },
-  "localExperiencePotionsRemoved": 106,
-  "localScenarioResults": [
+  "verificationScope": "CI Java21 headless official/control/variant checks, 26 analyzer scenarios, Android build and signature verification; physical-device execution not tested.",
+  "ciCases": [
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAA-CRC",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 97,
-      "wealth": [
-        [
-          7,
-          "ringofwealth",
-          1,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          14,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "locked_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 97
     },
     {
       "seed": "AAA-AAA-AAA",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 95,
-      "wealth": []
+      "equipment": 95
     },
     {
       "seed": "AAA-AAA-AAB",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 97,
-      "wealth": [
-        [
-          4,
-          "ringofwealth",
-          1,
-          true,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          24,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "mimic"
-        ]
-      ]
+      "equipment": 97
     },
     {
       "seed": "AAA-AAA-AAC",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 98,
-      "wealth": []
+      "equipment": 98
     },
     {
       "seed": "FVX-YTN-SLC",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 94,
-      "wealth": []
+      "equipment": 94
     },
     {
       "seed": "GFX-PZH-DCH",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 94,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          1,
-          false,
-          "-",
-          "crystal_chest"
-        ]
-      ]
+      "equipment": 94
     },
     {
       "seed": "DQM-NZN-XZG",
       "mask": 0,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 100,
-      "wealth": []
+      "equipment": 100
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 1,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 2,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 4,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 8,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 16,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 32,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 64,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 128,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 256,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 104,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 504,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 511,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 136,
       "hero": "WARRIOR",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 0,
       "hero": "MAGE",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 0,
       "hero": "ROGUE",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 0,
       "hero": "HUNTRESS",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 0,
       "hero": "DUELIST",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     },
     {
       "seed": "AAA-AAB-LKQ",
       "mask": 0,
       "hero": "CLERIC",
       "maps": 23,
-      "equipment": 92,
-      "wealth": [
-        [
-          2,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "skeleton"
-        ],
-        [
-          11,
-          "ringofwealth",
-          0,
-          false,
-          "-",
-          "crystal_chest"
-        ],
-        [
-          17,
-          "ringofwealth",
-          4,
-          false,
-          "-",
-          "imp_reward"
-        ]
-      ]
+      "equipment": 92
     }
-  ]
+  ],
+  "apk": {
+    "sourceCommit": "cbb59b2031047a46853b9ac59ff30a1c84eb7712",
+    "workflowRun": "https://github.com/soljipark07/shattered-pixel-dungeon/actions/runs/40656271003",
+    "artifactId": 12801848095,
+    "filename": "solji-imp-travel-experience30-4.0.2.apk",
+    "bytes": 35137122,
+    "sha256": "f193f02d405f77cc12cf68790af4545f3fb16a65d44e0c673aaa29f95c275d38",
+    "signerSha256": "5556b2469db5aeae051d588f29df040e17dfd73b2274fbfe0e770cfb00a04202",
+    "applicationId": "com.solji.imptravel402.experience30.indev",
+    "versionCode": 925,
+    "versionName": "4.0.2-EXP30-INDEV",
+    "physicalDeviceTested": false
+  }
 }
