@@ -2,8 +2,8 @@
 
 Based exactly on official v4.0.2 (57a4e06a4caf162446d1c28caa7983f0493fecf0).
 Start a new game to receive an identified, reusable Imp travel beacon, 15 upgrade scrolls,
-10 identified strength potions and 10 identified experience potions. Experience potions
-have no fixed natural total; ten is the chosen starting allowance. Existing games do not
+10 identified strength potions and 30 identified experience potions. Experience potions
+have no fixed natural total; thirty is the requested starting allowance. Existing games do not
 receive another starting grant and retain their saved relocation modes. Separate persisted
 strength/experience flags default false when missing from an older beacon.
 Its two actions visit the actual generated Imp room and return to floor 1. Complete the vault
@@ -41,8 +41,8 @@ map cells, loot types/levels/curses/quantities/positions, enemies, Imp rewards a
 state. It also checks starting inventory, actual saved-floor visits, no free exploration
 badge from pre-generation, occupied-destination handling, and travel-item serialization.
 
-The experience APK uses its own package, `com.solji.imptravel402.experience.indev`, and does not
-replace official saves or the earlier Imp/strength APKs. Its app label is `Solji Imp 경험물약 4.0.2`.
+The experience APK uses its own package, `com.solji.imptravel402.experience30.indev`, and does not
+replace official saves or the earlier Imp/strength APKs. Its app label is `Solji Imp 경험30 4.0.2`.
 It starts separate saves; this avoids requiring deletion of the earlier APK if debug signing differs.
 Android compilation does not substitute for device playtesting.
 

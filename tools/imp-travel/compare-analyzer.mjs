@@ -135,7 +135,7 @@ for(let n=0;n<reference.cases.length;n++){
 const summary={analyzerFile:reference.analyzerFile,htmlSha256:reference.htmlSha256,engineSha256:reference.engineSha256,
  scenarios:results.length,maps:mapCount,equipment:gearCount,knownHeapItems:knownItems,analyzerDeclaredUnknownItems:unknownItems,terrainDifferences,
  trinket:'none',trinketPlan:[],naturalUpgradesRemoved:true,naturalStrengthPotionsRemoved:true,
- naturalExperiencePotionsRemoved:true,startingExperiencePotions:10,experiencePotionsRemoved,
+ naturalExperiencePotionsRemoved:true,startingExperiencePotions:30,experiencePotionsRemoved,
  comparisonStrategy:'Control retains XP and matches analyzer uncertainty rules; paired audit fixes vanilla unseeded Collections.shuffle and resets vault solve arrays, normalizes existing runtime shop-bag ties, and requires exactly control heaps minus regular XP with unchanged terrain/mobs/decks/equipment/rewards.',results};
 fs.writeFileSync(summaryPath,JSON.stringify(summary,null,2));
 console.log('PASS direct analyzer comparison: '+JSON.stringify({...summary,results:undefined}));

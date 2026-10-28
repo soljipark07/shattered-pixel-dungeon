@@ -70,7 +70,7 @@ public class ImpTravelRegression {
                 int count = countUpgrades();
                 require(count == 15, "new game must carry 15 upgrade scrolls; got "+count);
                 require(countStrength()==10, "new game must carry 10 strength potions; got "+countStrength());
-                require(countExperience()==10, "new game must carry 10 experience potions; got "+countExperience());
+                require(countExperience()==30, "new game must carry 30 experience potions; got "+countExperience());
                 for(Item item:Dungeon.hero.belongings.backpack.items)
                     if(item instanceof PotionOfStrength) require(item.isIdentified(), "starting strength must be identified");
                 for(Item item:Dungeon.hero.belongings.backpack.items)
@@ -78,7 +78,7 @@ public class ImpTravelRegression {
                 Dungeon.saveGame(1);
                 Dungeon.loadGame(1);
                 require(countStrength()==10 && countUpgrades()==15, "starting grants must survive save/reload without duplication");
-                require(countExperience()==10, "experience grant must survive save/reload without duplication");
+                require(countExperience()==30, "experience grant must survive save/reload without duplication");
                 int last=Collections.max(Dungeon.generatedLevels);
                 for(int depth=last+1;depth<=24;depth++) {
                     Dungeon.depth=depth;
@@ -249,7 +249,7 @@ public class ImpTravelRegression {
                                 .getMethod("prepare", Level.class).invoke(null, first);
                         require(countUpgrades()==15, "15 starting upgrades for "+run);
                         require(countStrength()==10, "10 starting strength potions for "+run);
-                        require(countExperience()==10, "10 starting experience potions for "+run);
+                        require(countExperience()==30, "30 starting experience potions for "+run);
                         require(Dungeon.depth==1 && Dungeon.branch==0 && Dungeon.level==first,
                                 "preparation must restore floor 1");
                         require(Statistics.deepestFloor==1, "generation must not count as visiting floors");

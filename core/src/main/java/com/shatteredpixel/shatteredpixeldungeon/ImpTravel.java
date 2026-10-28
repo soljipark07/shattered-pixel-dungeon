@@ -66,7 +66,7 @@ public final class ImpTravel {
                         new ScrollOfUpgrade().identify(false).quantity(15).collect();
                         new PotionOfStrength().identify(false).quantity(10).collect();
                         if (beacon.relocatesExperience()) {
-                            new PotionOfExperience().identify(false).quantity(10).collect();
+                            new PotionOfExperience().identify(false).quantity(30).collect();
                         }
                         return;
                     }
